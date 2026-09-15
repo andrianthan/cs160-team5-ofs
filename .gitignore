@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+
+# SQLite
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
+.DS_Store
+
+# Mapbox / API keys
+.env
+secrets.py
+
+# Build / dist
+dist/
+build/
+*.egg
+
+# Logs
+*.log
+
+# OS
+Thumbs.db

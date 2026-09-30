@@ -78,7 +78,7 @@ def register():
         return _error("email_taken", "An account with this email address has been made already", 409)
 
     user = User(email=email, name=name, role=CUSTOMER)
-    user.password_hash = hash_password(password) # later add salting
+    user.password_hash = hash_password(password)
 
     db.session.add(user)
     db.session.commit()

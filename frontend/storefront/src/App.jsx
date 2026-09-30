@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, NavLink } from "react-router-dom";
 import PageStub from "./pages/PageStub";
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage"
 
 // Route table from docs/part2 LLD 5 (Frontend Component Breakdown), owners from
 // docs/part2/backlog.md. Replace each PageStub with the real page as it's built.
@@ -26,8 +28,8 @@ export default function App() {
       <Nav />
       <Routes>
         <Route path="/" element={<Navigate to="/browse" replace />} />
-        <Route path="/login" element={<PageStub title="Login" task="T06" owner="Kelvin" />} />
-        <Route path="/register" element={<PageStub title="Register" task="T06" owner="Kelvin" />} />
+        <Route path="/login" element={<LoginPage/>} />
+        <Route path="/register" element={<RegisterPage/>} />
         <Route path="/browse" element={<PageStub title="Browse Products" task="T07" owner="Kelvin" />} />
         <Route path="/cart" element={<PageStub title="Cart" task="T09" owner="Kelvin" />} />
         <Route path="/checkout" element={<PageStub title="Checkout" task="T08 / T10 / T11" owner="Andrian" />} />

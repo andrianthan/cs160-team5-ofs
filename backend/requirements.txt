@@ -1,11 +1,15 @@
 # Core — matches docs/part1 Architecture HLD §5 (Hardware/Software/Tools)
 Flask==3.1.3
+Flask-Login
+Flask-WTF
 Flask-SQLAlchemy==3.1.1
 Flask-Migrate==4.0.7
 Flask-CORS==5.0.0
 python-dotenv==1.0.1
-psycopg2-binary==2.9.9   # PostgreSQL driver
-gunicorn==26.2.2         # production WSGI server
+psycopg2-binary==2.9.13  # PostgreSQL driver
+gunicorn==26.2.0         # production WSGI server
+
+email-validator
 
 # External services (LLD 2/3)
 stripe==11.4.0

@@ -52,6 +52,7 @@ cd frontend/staff-dashboard && npm install && npm run dev # http://localhost:517
 ```
 
 **Backend:**
+NOTE: Python Version: 3.14.7
 ```
 cd backend
 python3 -m venv .venv && source .venv/bin/activate

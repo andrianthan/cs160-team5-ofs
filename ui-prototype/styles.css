@@ -1,0 +1,24 @@
+/* Small bits Tailwind utilities don't cover directly. */
+
+@keyframes fadein {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(21, 128, 61, 0.45); }
+  50% { box-shadow: 0 0 0 10px rgba(21, 128, 61, 0); }
+}
+.map-dot {
+  animation: pulse-dot 1.8s ease-out infinite;
+}
+
+/* route sections hidden by default; app.js toggles [data-active] */
+[data-route] { display: none; }
+[data-route][data-active="true"] { display: block; animation: fadein .15s ease-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  .map-dot { animation: none; }
+  [data-route][data-active="true"] { animation: none; }
+  * { transition-duration: 0.01ms !important; }
+}

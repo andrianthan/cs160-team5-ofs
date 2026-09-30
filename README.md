@@ -1,25 +1,15 @@
 # OFS On-Demand Food Delivery (CS160 Team 5)
 
-Web app for organic food delivery in San Jose Downtown.
-Self-driving robot dispatches up to 10 orders / 200 lb per trip.
+Web app for organic food delivery in Downtown San Jose.
+Self-driving Robots carry up to 10 Orders / 200 lb per Trip.
 
 ## Stack
 
-- **Backend:** Flask (Python)
-- **DB:** PostgreSQL w/ Supabase
-- **Frontend:** HTML + Jinja + TypeScript
-- **Maps:** Mapbox GL JS (free tier)
-
-## Setup
-
-```bash
-pip install flask
-# Mapbox API key needed — get from https://account.mapbox.com/
-export MAPBOX_KEY="pk.your_key_here"
-python app.py
-```
-
-Open `http://localhost:5000`.
+- **Frontend:** React + Vite + React Router + Tailwind CSS
+- **Backend:** Flask REST API (Python) + SQLAlchemy, served by gunicorn
+- **DB:** PostgreSQL
+- **Maps & routing:** Mapbox GL JS, Geocoding API, Optimization API (`driving-traffic`)
+- **Payments:** Stripe (test mode)
 
 ## Team Roles (Part I)
 
@@ -41,8 +31,35 @@ Open `http://localhost:5000`.
 ## Project Layout
 
 ```
-/                  → Flask app entrypoint (app.py)
-/templates/        → Jinja HTML
-/static/           → CSS, JS, images
-/db/               → SQLite + schema.sql + seed.sql
+/frontend/storefront/       → Customer Storefront (Vite + React + Tailwind + React Router)
+/frontend/staff-dashboard/  → Staff Dashboard (Vite + React + Tailwind + React Router)
+/backend/                   → Flask API (app factory + blueprints, one per component group)
+/backend/app/models/        → SQLAlchemy models, see LLD for the schema
+/backend/tests/             → pytest
+/ui-prototype/               → Standalone click-through HTML/JS mockup, no backend — see its own README
 ```
+
+Every backend route is a stub (`501 not_implemented`) tagged with its owning backlog
+task — e.g. `app/blueprints/cart.py` says `T08, Than Andrian`. Check
+[Trello](https://trello.com/b/aw6ohAFJ) for the task card and pseudo code.
+
+## Getting Started
+
+**Frontend** (run each app in its own terminal):
+```
+cd frontend/storefront && npm install && npm run dev      # http://localhost:5173
+cd frontend/staff-dashboard && npm install && npm run dev # http://localhost:5174
+```
+
+**Backend:**
+```
+cd backend
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env   # fill in DATABASE_URL, STRIPE_*, MAPBOX_*, SMTP_* as you need them
+python run.py           # http://localhost:5000, GET /api/health to check it's up
+pytest                  # run the test suite
+```
+
+Both frontend apps proxy `/api/*` to `localhost:5000` in dev (see each `vite.config.js`) —
+no CORS headaches locally.

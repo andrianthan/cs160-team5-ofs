@@ -1,0 +1,29 @@
+---
+title: OFS Prototype — Customer & Staff Flow (combined)
+---
+sequenceDiagram
+    actor Cust as 🧍 Customer
+    participant Store as Storefront App
+    participant Order as 🔄 Shared Order State
+    participant Staff as Staff Dashboard
+    actor Emp as 🦺 Employee / Manager
+
+    Cust->>Store: Login / Register
+    Cust->>Store: Browse, add items to Cart
+    Cust->>Store: Checkout (address → payment)
+    Store->>Order: create order — status Placed
+    Order-->>Staff: appears in Prep Queue
+
+    Emp->>Staff: Mark Prepared
+    Staff->>Order: status Planned, assign to Trip (BR-2/BR-6)
+
+    Emp->>Staff: Assign Robot
+    Emp->>Staff: Confirm load & Dispatch
+    Staff->>Order: status Out for Delivery
+    Order-->>Store: Track updates live
+
+    Emp->>Staff: Mark Delivered / Failed (per stop)
+    Staff->>Order: status Delivered / Delivery Failed (BR-8)
+    Order-->>Store: Track updates live
+
+    Note over Order: Order lifecycle is shared via<br/>localStorage — both apps<br/>read/write the same state

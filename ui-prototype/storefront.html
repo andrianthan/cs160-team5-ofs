@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>OFS — Customer Storefront (Prototype)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ["DM Sans", "sans-serif"],
+          display: ["Space Grotesk", "sans-serif"],
+        },
+        colors: {
+          brand: { 50:"#F0FDF4",100:"#DCFCE7",200:"#BBF7D0",300:"#86EFAC",400:"#4ADE80",500:"#22C55E",600:"#16A34A",700:"#15803D",800:"#166534",900:"#14532D" },
+          gold:  { 50:"#FEFCE8",100:"#FEF9C3",200:"#FDE68A",300:"#FCD34D",400:"#EAB308",500:"#CA8A04",600:"#A16207",700:"#854D0E",800:"#713F12",900:"#422006" },
+        },
+      },
+    },
+  };
+</script>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body class="bg-brand-50 text-brand-900 font-sans min-h-screen antialiased">
+
+  <!-- Toasts -->
+  <div id="toast-host" class="fixed top-4 right-4 z-50 flex flex-col gap-2 w-72" role="status" aria-live="polite"></div>
+
+  <!-- Sticky cart bar (Uber/DoorDash-style pinned checkout CTA), shown on Browse when cart has items -->
+  <a id="sticky-cart-bar" href="#/cart" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-30 bg-brand-800 hover:bg-brand-900 text-white rounded-full pl-4 pr-2 py-2 shadow-lg shadow-brand-900/20 items-center gap-3 text-sm font-medium transition-colors duration-200 cursor-pointer">
+    <span id="sticky-cart-text">1 item</span>
+    <span class="bg-white/15 rounded-full px-3 py-1.5 flex items-center gap-1">View cart <i class="ph ph-arrow-right" aria-hidden="true"></i></span>
+  </a>
+
+  <!-- Nav (hidden pre-login) -->
+  <header id="nav" class="hidden sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-brand-100">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+      <a href="#/browse" class="flex items-center gap-2 font-display font-bold text-brand-700 text-lg">
+        <i class="ph ph-leaf text-2xl" aria-hidden="true"></i> OFS
+      </a>
+      <nav class="flex items-center gap-1 text-sm" aria-label="Primary">
+        <a href="#/browse" data-nav="browse" class="px-3 py-2 rounded-full font-medium transition-colors duration-200">Browse</a>
+        <a href="#/cart" data-nav="cart" class="px-3 py-2 rounded-full font-medium relative transition-colors duration-200">
+          Cart
+          <span id="cart-badge" class="hidden absolute -top-1 -right-1 bg-gold-600 text-white text-[10px] leading-none rounded-full w-4 h-4 items-center justify-center font-sans">0</span>
+        </a>
+        <a href="#/track" data-nav="track" class="px-3 py-2 rounded-full font-medium transition-colors duration-200">Track</a>
+      </nav>
+      <div class="flex items-center gap-3 text-sm">
+        <span id="nav-user" class="text-brand-900/60"></span>
+        <button id="logout-btn" class="text-brand-900/60 hover:text-red-600 font-medium cursor-pointer transition-colors duration-200 rounded px-1">Log out</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-4 py-8">
+
+    <!-- LOGIN -->
+    <section data-route="login" class="max-w-sm mx-auto mt-8">
+      <div class="text-center mb-6">
+        <div class="w-12 h-12 rounded-2xl bg-brand-600 text-white flex items-center justify-center mx-auto mb-3">
+          <i class="ph ph-leaf text-2xl" aria-hidden="true"></i>
+        </div>
+        <h1 class="text-2xl font-display font-bold">Welcome to OFS</h1>
+        <p class="text-brand-900/60 text-sm mt-1">Organic groceries, delivered by robot.</p>
+      </div>
+      <form id="login-form" class="bg-white border border-brand-100 rounded-3xl p-6 space-y-4 shadow-sm shadow-brand-900/5">
+        <div>
+          <label for="login-email" class="text-sm font-medium text-brand-900/80">Email</label>
+          <input id="login-email" name="email" type="email" required value="customer@ofs.test" autocomplete="email"
+            class="mt-1 w-full border border-brand-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition" />
+        </div>
+        <div>
+          <label for="login-password" class="text-sm font-medium text-brand-900/80">Password</label>
+          <input id="login-password" name="password" type="password" required value="demo" autocomplete="current-password"
+            class="mt-1 w-full border border-brand-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition" />
+        </div>
+        <p id="login-error" class="hidden text-sm text-red-600 flex items-center gap-1.5" role="alert"><i class="ph ph-warning-circle" aria-hidden="true"></i><span></span></p>
+        <button class="w-full bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-xl py-2.5 text-sm transition-colors duration-200 cursor-pointer">Log in</button>
+        <p class="text-center text-sm text-brand-900/60">No account? <a href="#/register" class="text-brand-700 font-medium hover:underline">Register</a></p>
+        <p class="text-center text-xs text-brand-900/40">Demo accounts: customer@ofs.test / demo</p>
+      </form>
+    </section>
+
+    <!-- REGISTER -->
+    <section data-route="register" class="max-w-sm mx-auto mt-8">
+      <div class="text-center mb-6">
+        <h1 class="text-2xl font-display font-bold">Create your account</h1>
+      </div>
+      <form id="register-form" class="bg-white border border-brand-100 rounded-3xl p-6 space-y-4 shadow-sm shadow-brand-900/5">
+        <div>
+          <label for="reg-name" class="text-sm font-medium text-brand-900/80">Full name</label>
+          <input id="reg-name" name="name" type="text" required autocomplete="name" class="mt-1 w-full border border-brand-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition" />
+        </div>
+        <div>
+          <label for="reg-email" class="text-sm font-medium text-brand-900/80">Email</label>
+          <input id="reg-email" name="email" type="email" required autocomplete="email" class="mt-1 w-full border border-brand-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition" />
+        </div>
+        <div>
+          <label for="reg-password" class="text-sm font-medium text-brand-900/80">Password</label>
+          <input id="reg-password" name="password" type="password" required autocomplete="new-password" class="mt-1 w-full border border-brand-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition" />
+        </div>
+        <button class="w-full bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-xl py-2.5 text-sm transition-colors duration-200 cursor-pointer">Create account</button>
+        <p class="text-center text-sm text-brand-900/60">Already have one? <a href="#/login" class="text-brand-700 font-medium hover:underline">Log in</a></p>
+      </form>
+    </section>
+
+    <!-- BROWSE -->
+    <section data-route="browse">
+      <div class="bg-brand-700 text-white rounded-3xl px-5 py-4 mb-5 flex items-center gap-3">
+        <i class="ph ph-truck text-2xl shrink-0" aria-hidden="true"></i>
+        <div class="text-sm">
+          <div class="font-display font-semibold">Free delivery under 20 lb</div>
+          <div class="text-white/70">$10 fee applies at 20 lb or more · robot delivery across Downtown San Jose</div>
+        </div>
+      </div>
+      <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
+        <h1 class="text-2xl font-display font-bold">Browse Products</h1>
+      </div>
+      <div id="category-filters" class="flex gap-2 flex-wrap mb-5 overflow-x-auto pb-1" role="group" aria-label="Filter by category"></div>
+      <div id="product-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 pb-20"></div>
+    </section>
+
+    <!-- CART -->
+    <section data-route="cart">
+      <h1 class="text-2xl font-display font-bold mb-5">Your Cart</h1>
+      <div id="cart-empty" class="hidden text-brand-900/50 py-16 text-center border-2 border-dashed border-brand-200 rounded-3xl">
+        <i class="ph ph-shopping-cart text-3xl mb-2 block" aria-hidden="true"></i>
+        Your cart is empty. <a href="#/browse" class="text-brand-700 font-medium hover:underline">Go browse →</a>
+      </div>
+      <div id="cart-body" class="grid md:grid-cols-3 gap-6">
+        <div id="cart-lines" class="md:col-span-2 space-y-3"></div>
+        <div class="bg-white border border-brand-100 rounded-3xl p-5 h-fit space-y-3 shadow-sm shadow-brand-900/5">
+          <div class="flex justify-between text-sm"><span>Subtotal</span><span id="sum-subtotal">$0.00</span></div>
+          <div class="flex justify-between text-sm"><span>Order Weight</span><span id="sum-weight">0.0 lb</span></div>
+          <div class="flex justify-between text-sm"><span>Delivery Fee</span><span id="sum-fee">$0.00</span></div>
+          <div class="border-t border-brand-100 pt-3 flex justify-between font-semibold"><span>Total</span><span id="sum-total">$0.00</span></div>
+          <p id="fee-hint" class="text-xs text-brand-900/50"></p>
+          <div id="overweight-banner" class="hidden text-sm bg-red-50 text-red-700 border border-red-200 rounded-xl px-3 py-2.5 flex items-start gap-2" role="alert">
+            <i class="ph ph-warning-circle text-base shrink-0 mt-0.5" aria-hidden="true"></i>
+            <span>Order exceeds 200 lb — a single Robot Trip can't carry this. Remove items to check out. <span class="font-medium">(BR-3)</span></span>
+          </div>
+          <button id="checkout-btn" class="w-full bg-brand-600 hover:bg-brand-700 disabled:bg-brand-900/20 disabled:cursor-not-allowed text-white font-medium rounded-xl py-2.5 text-sm transition-colors duration-200 cursor-pointer">Checkout</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- CHECKOUT -->
+    <section data-route="checkout" class="max-w-xl mx-auto">
+      <h1 class="text-2xl font-display font-bold mb-1">Checkout</h1>
+      <p class="text-sm text-brand-900/50 mb-6">Step <span id="checkout-step-num">1</span> of 2</p>
+
+      <!-- Step 1: address -->
+      <div id="checkout-address" class="bg-white border border-brand-100 rounded-3xl p-6 space-y-4 shadow-sm shadow-brand-900/5">
+        <h2 class="font-display font-semibold flex items-center gap-2"><i class="ph ph-map-pin text-brand-600" aria-hidden="true"></i>Delivery address</h2>
+        <div>
+          <label for="addr-street" class="text-sm font-medium text-brand-900/80">Street address</label>
+          <input id="addr-street" type="text" placeholder="123 Market St, Downtown San Jose, CA"
+            class="mt-1 w-full border border-brand-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition" />
+          <p class="text-xs text-brand-900/40 mt-1">Demo: address must mention "Downtown San Jose" to pass the Delivery Zone check.</p>
+        </div>
+        <p id="address-error" class="hidden text-sm bg-red-50 text-red-700 border border-red-200 rounded-xl px-3 py-2.5 flex items-start gap-2" role="alert"><i class="ph ph-warning-circle text-base shrink-0 mt-0.5" aria-hidden="true"></i><span></span></p>
+        <button id="validate-address-btn" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-xl py-2.5 text-sm transition-colors duration-200 cursor-pointer">Continue to payment</button>
+      </div>
+
+      <!-- Step 2: payment -->
+      <div id="checkout-payment" class="hidden bg-white border border-brand-100 rounded-3xl p-6 space-y-4 shadow-sm shadow-brand-900/5">
+        <h2 class="font-display font-semibold flex items-center gap-2"><i class="ph ph-credit-card text-brand-600" aria-hidden="true"></i>Payment</h2>
+        <div>
+          <label for="card-number" class="text-sm font-medium text-brand-900/80">Card number</label>
+          <input id="card-number" type="text" placeholder="4242 4242 4242 4242" autocomplete="cc-number"
+            class="mt-1 w-full border border-brand-200 rounded-xl px-3 py-2.5 text-sm font-mono focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition" />
+          <p class="text-xs text-brand-900/40 mt-1">Stripe test mode: use 4242 4242 4242 4242 to succeed, 4000 0000 0000 0002 to simulate a decline.</p>
+        </div>
+        <p id="payment-error" class="hidden text-sm bg-red-50 text-red-700 border border-red-200 rounded-xl px-3 py-2.5 flex items-start gap-2" role="alert"><i class="ph ph-warning-circle text-base shrink-0 mt-0.5" aria-hidden="true"></i><span></span></p>
+        <div class="flex justify-between text-sm border-t border-brand-100 pt-4">
+          <span class="text-brand-900/60">Total due</span>
+          <span id="checkout-total" class="font-semibold">$0.00</span>
+        </div>
+        <button id="pay-btn" class="w-full bg-gold-600 hover:bg-gold-700 text-white font-medium rounded-xl py-2.5 text-sm transition-colors duration-200 cursor-pointer">Place order</button>
+        <button id="back-to-address-btn" class="w-full text-brand-900/50 hover:text-brand-900 text-sm py-1 cursor-pointer transition-colors duration-200">← Back to address</button>
+      </div>
+    </section>
+
+    <!-- TRACK -->
+    <section data-route="track">
+      <h1 class="text-2xl font-display font-bold mb-5">Track Orders</h1>
+      <div id="track-list" class="space-y-4"></div>
+    </section>
+
+  </main>
+
+  <script src="mock-data.js"></script>
+  <script src="storefront.js"></script>
+</body>
+</html>

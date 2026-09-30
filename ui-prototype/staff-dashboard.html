@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>OFS — Staff Dashboard (Prototype)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ["DM Sans", "sans-serif"],
+          display: ["Space Grotesk", "sans-serif"],
+        },
+        colors: {
+          brand: { 50:"#F0FDF4",100:"#DCFCE7",200:"#BBF7D0",300:"#86EFAC",400:"#4ADE80",500:"#22C55E",600:"#16A34A",700:"#15803D",800:"#166534",900:"#14532D" },
+          gold:  { 50:"#FEFCE8",100:"#FEF9C3",200:"#FDE68A",300:"#FCD34D",400:"#EAB308",500:"#CA8A04",600:"#A16207",700:"#854D0E",800:"#713F12",900:"#422006" },
+        },
+      },
+    },
+  };
+</script>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body class="bg-brand-50 text-brand-900 font-sans min-h-screen antialiased">
+
+  <div id="toast-host" class="fixed top-4 right-4 z-50 flex flex-col gap-2 w-72" role="status" aria-live="polite"></div>
+
+  <!-- Nav -->
+  <header id="nav" class="hidden sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-brand-100">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between flex-wrap gap-2">
+      <div class="flex items-center gap-2 font-display font-bold text-brand-700 text-lg">
+        <i class="ph ph-leaf text-2xl" aria-hidden="true"></i> OFS Staff
+      </div>
+      <nav class="flex items-center gap-1 text-sm flex-wrap" aria-label="Primary">
+        <a href="#/queue" data-nav="queue" class="px-3 py-2 rounded-full font-medium transition-colors duration-200">Prep Queue</a>
+        <a href="#/dispatch" data-nav="dispatch" class="px-3 py-2 rounded-full font-medium transition-colors duration-200">Dispatch</a>
+        <a href="#/inventory" data-nav="inventory" class="px-3 py-2 rounded-full font-medium transition-colors duration-200">Inventory</a>
+        <a href="#/reports" data-nav="reports" data-manager-only class="hidden px-3 py-2 rounded-full font-medium transition-colors duration-200">Reports</a>
+      </nav>
+      <div class="flex items-center gap-3 text-sm">
+        <button id="pause-btn" data-manager-only class="hidden text-xs font-medium border border-brand-200 rounded-full px-3 py-1.5 text-brand-900/70 cursor-pointer transition-colors duration-200 items-center gap-1.5">
+          <i class="ph ph-pause-circle" aria-hidden="true"></i> Delivery: <span id="pause-state">Active</span>
+        </button>
+        <span id="nav-role" class="text-xs font-medium bg-brand-100 text-brand-800 rounded-full px-2.5 py-1"></span>
+        <span id="nav-user" class="text-brand-900/60"></span>
+        <button id="logout-btn" class="text-brand-900/60 hover:text-red-600 font-medium cursor-pointer transition-colors duration-200 rounded px-1">Log out</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 py-8">
+
+    <!-- LOGIN -->
+    <section data-route="login" class="max-w-sm mx-auto mt-8">
+      <div class="text-center mb-6">
+        <div class="w-12 h-12 rounded-2xl bg-brand-600 text-white flex items-center justify-center mx-auto mb-3">
+          <i class="ph ph-leaf text-2xl" aria-hidden="true"></i>
+        </div>
+        <h1 class="text-2xl font-display font-bold">OFS Staff Login</h1>
+        <p class="text-brand-900/60 text-sm mt-1">Employee and Manager access only.</p>
+      </div>
+      <form id="login-form" class="bg-white border border-brand-100 rounded-3xl p-6 space-y-4 shadow-sm shadow-brand-900/5">
+        <div>
+          <label for="staff-email" class="text-sm font-medium text-brand-900/80">Email</label>
+          <input id="staff-email" name="email" type="email" required value="employee@ofs.test" autocomplete="email"
+            class="mt-1 w-full border border-brand-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition" />
+        </div>
+        <div>
+          <label for="staff-password" class="text-sm font-medium text-brand-900/80">Password</label>
+          <input id="staff-password" name="password" type="password" required value="demo" autocomplete="current-password"
+            class="mt-1 w-full border border-brand-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition" />
+        </div>
+        <p id="login-error" class="hidden text-sm text-red-600 flex items-center gap-1.5" role="alert"><i class="ph ph-warning-circle" aria-hidden="true"></i><span></span></p>
+        <button class="w-full bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-xl py-2.5 text-sm transition-colors duration-200 cursor-pointer">Log in</button>
+        <p class="text-center text-xs text-brand-900/40">Demo: employee@ofs.test / demo · manager@ofs.test / demo</p>
+      </form>
+    </section>
+
+    <!-- PREP QUEUE -->
+    <section data-route="queue">
+      <h1 class="text-2xl font-display font-bold mb-5">Preparation Queue</h1>
+      <div id="queue-list" class="space-y-3"></div>
+    </section>
+
+    <!-- DISPATCH -->
+    <section data-route="dispatch">
+      <h1 class="text-2xl font-display font-bold mb-5">Dispatch</h1>
+      <div id="dispatch-list" class="grid md:grid-cols-2 gap-4"></div>
+    </section>
+
+    <!-- INVENTORY -->
+    <section data-route="inventory">
+      <h1 class="text-2xl font-display font-bold mb-5">Inventory</h1>
+      <div class="bg-white border border-brand-100 rounded-3xl overflow-hidden shadow-sm shadow-brand-900/5">
+        <table class="w-full text-sm">
+          <thead class="bg-brand-50 text-brand-900/50 text-xs uppercase tracking-wide">
+            <tr>
+              <th class="text-left px-4 py-3">Product</th>
+              <th class="text-left px-4 py-3">Category</th>
+              <th class="text-right px-4 py-3">Price</th>
+              <th class="text-right px-4 py-3">Weight</th>
+              <th class="text-right px-4 py-3">Stock</th>
+            </tr>
+          </thead>
+          <tbody id="inventory-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- REPORTS (manager only) -->
+    <section data-route="reports">
+      <h1 class="text-2xl font-display font-bold mb-5">Manager Reports</h1>
+      <div id="reports-tiles" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+    </section>
+
+  </main>
+
+  <script src="mock-data.js"></script>
+  <script src="staff-dashboard.js"></script>
+</body>
+</html>

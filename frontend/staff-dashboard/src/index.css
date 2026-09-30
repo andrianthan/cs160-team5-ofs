@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+/* Design tokens matching the ui-prototype/ mockup — see docs/part2 for the source. */
+@theme {
+  --color-brand-50: #F0FDF4;
+  --color-brand-100: #DCFCE7;
+  --color-brand-200: #BBF7D0;
+  --color-brand-300: #86EFAC;
+  --color-brand-400: #4ADE80;
+  --color-brand-500: #22C55E;
+  --color-brand-600: #16A34A;
+  --color-brand-700: #15803D;
+  --color-brand-800: #166534;
+  --color-brand-900: #14532D;
+
+  --color-gold-50: #FEFCE8;
+  --color-gold-100: #FEF9C3;
+  --color-gold-200: #FDE68A;
+  --color-gold-300: #FCD34D;
+  --color-gold-400: #EAB308;
+  --color-gold-500: #CA8A04;
+  --color-gold-600: #A16207;
+  --color-gold-700: #854D0E;
+  --color-gold-800: #713F12;
+  --color-gold-900: #422006;
+
+  --font-sans: "DM Sans", sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+}
+
+body {
+  margin: 0;
+}

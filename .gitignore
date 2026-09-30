@@ -42,5 +42,10 @@ build/
 # Logs
 *.log
 
+# Node / frontend
+node_modules/
+frontend/*/dist/
+
+
 # OS
 Thumbs.db

@@ -27,8 +27,6 @@ def create_session(user):
     login_user(user)
 
 def require_role(*roles):
-    """401 if not logged in, 403 if the role isn't allowed. A manager passes "employee" checks."""
-
     def decorator(view):
         @wraps(view)
         def wrapped(*args, **kwargs):
@@ -42,7 +40,8 @@ def require_role(*roles):
 
     return decorator
 
-staff_required = require_role(EMPLOYEE) 
+staff_required = require_role(EMPLOYEE)
+manager_required = require_role(MANAGER)
 
 def _error(code, message, status):
     return jsonify(error=code, message=message), status

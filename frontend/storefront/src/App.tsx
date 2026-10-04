@@ -1,4 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate, NavLink, type NavLinkRenderProps } from "react-router-dom";
+
+import { AuthProvider, useAuth } from "./AuthContext";
+import RequireAuth from "./RequireAuth";
+
 import PageStub from "./pages/PageStub";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage"
@@ -25,16 +29,38 @@ function Nav() {
 export default function App() {
   return (
     <BrowserRouter>
-      <Nav />
-      <Routes>
-        <Route path="/" element={<Navigate to="/browse" replace />} />
-        <Route path="/login" element={<LoginPage/>} />
-        <Route path="/register" element={<RegisterPage/>} />
-        <Route path="/browse" element={<PageStub title="Browse Products" task="T07" owner="Kelvin" />} />
-        <Route path="/cart" element={<PageStub title="Cart" task="T09" owner="Kelvin" />} />
-        <Route path="/checkout" element={<PageStub title="Checkout" task="T08 / T10 / T11" owner="Andrian" />} />
-        <Route path="/track" element={<PageStub title="Track Orders" task="T16" owner="Jorge" />} />
-      </Routes>
+      <AuthProvider portal="customer">
+        <Nav />
+        <Routes>
+          <Route path="/" element={<Navigate to="/browse" replace />} />
+          <Route 
+            path="/login"
+            element={
+              <LoginPage/>
+            }
+          />
+          <Route path="/register" element={<RegisterPage/>} />
+          <Route path="/browse" element={<PageStub title="Browse Products" task="T07" owner="Kelvin" />} />
+          <Route path="/cart" element={<PageStub title="Cart" task="T09" owner="Kelvin" />} />
+          <Route
+            path="/checkout"
+            element={
+              <RequireAuth>
+                <PageStub title="Checkout" task="T08 / T10 / T11" owner="Andrian" />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/track"
+            element={
+              <RequireAuth>
+                <PageStub title="Track Orders" task="T16" owner="Jorge" />
+              </RequireAuth>
+            }
+          />
+        </Routes>
+      </AuthProvider>
+      
     </BrowserRouter>
   );
 }

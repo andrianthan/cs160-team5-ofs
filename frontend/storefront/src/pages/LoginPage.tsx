@@ -1,7 +1,10 @@
 import {useState} from 'react';
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../AuthContext";
 
 export default function LoginPage() {
+    const { user, login } = useAuth();
+            const location = useLocation();
     const navigate = useNavigate();
 
     const [email, setEmail] = useState<string>("");
@@ -11,33 +14,27 @@ export default function LoginPage() {
 
     const [error, setError] = useState<null | string>();
 
+    // check if user is signed in
+    if (user === undefined) {
+        return null;
+    }
+    if (user) {
+        const from = (location.state as { from?: string } | null)?.from ?? "/browse";
+        return <Navigate to={from} replace />;
+    } 
+
     const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        setBusy(true);
+        setBusy(true); 
         setError(null);
+        
+        const res = await login(email, password);
 
-        // send api call
-        try {
-            const res = await fetch("/api/auth/login", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email, password, portal: "customer" }),
-            });
-            const data = await res.json().catch(() => {});
-
-            if (res.ok) {
-                navigate("/browse");
-            } else if([502, 503, 504].includes(res.status)) {
-                setError("Cannot reach the server.");
-            } else {
-                setError(data.message);
-            }
-        } catch {
-            setError("Cannot reach the server.");
-        } finally {
-            setBusy(false);
+        if (!res.ok) {
+            setError(res.data.message ?? "Sign in failed. Try again.");
         }
         
+        setBusy(false);
     };
 
     return(

@@ -1,7 +1,7 @@
 from flask import Flask, jsonify
 
 from .config import Config
-from .extensions import db, migrate, cors
+from .extensions import db, migrate, cors, login_manager
 
 
 def create_app(config_class=Config):
@@ -11,6 +11,19 @@ def create_app(config_class=Config):
     db.init_app(app)
     migrate.init_app(app, db)
     cors.init_app(app, resources={r"/api/*": {"origins": "*"}})  # tighten before prod
+
+    login_manager.init_app(app)
+
+    from .models import User
+
+    @login_manager.user_loader
+    def load_user(user_id):
+        return db.session.get(User, int(user_id))
+
+    @login_manager.unauthorized_handler
+    def unauthorized():
+        # API returns JSON, never a redirect to a login page.
+        return jsonify(error="unauthorized"), 401
 
     from .blueprints import auth, products, cart, addresses, payments, orders, trips, tracking, reports, settings
 

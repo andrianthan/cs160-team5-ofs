@@ -7,7 +7,7 @@ Self-driving Robots carry up to 10 Orders / 200 lb per Trip.
 
 - **Frontend:** React + TypeScript + Vite + React Router + Tailwind CSS
 - **Backend:** Flask REST API (Python) + SQLAlchemy, served by gunicorn
-- **DB:** PostgreSQL
+- **DB:** PostgreSQL via [Supabase](https://supabase.com) (free tier)
 - **Maps & routing:** Mapbox GL JS, Geocoding API, Optimization API (`driving-traffic`)
 - **Payments:** Stripe (test mode)
 - **Auth:** Flask-Login, session-based
@@ -64,6 +64,14 @@ cp .env.example .env   # fill in DATABASE_URL, STRIPE_*, MAPBOX_*, SMTP_* as you
 python run.py           # http://localhost:5000, GET /api/health to check it's up
 pytest                  # run the test suite
 ```
+
+**DB (Supabase):** one shared Supabase project for the whole team — don't each spin up your own.
+Whoever has it (currently: T02 owner) posts the connection string in the team chat, not committed
+anywhere. Project Settings → Database → Connection string → URI, then:
+```
+DATABASE_URL=postgresql://postgres:[YOUR-PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres
+```
+goes in your own local `.env` (never `.env.example`, never committed — it's gitignored already).
 
 Both frontend apps proxy `/api/*` to `localhost:5000` in dev (see each `vite.config.js`) —
 no CORS headaches locally.

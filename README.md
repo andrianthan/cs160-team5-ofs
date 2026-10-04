@@ -5,11 +5,14 @@ Self-driving Robots carry up to 10 Orders / 200 lb per Trip.
 
 ## Stack
 
-- **Frontend:** React + Vite + React Router + Tailwind CSS
+- **Frontend:** React + TypeScript + Vite + React Router + Tailwind CSS
 - **Backend:** Flask REST API (Python) + SQLAlchemy, served by gunicorn
 - **DB:** PostgreSQL
 - **Maps & routing:** Mapbox GL JS, Geocoding API, Optimization API (`driving-traffic`)
 - **Payments:** Stripe (test mode)
+- **Auth:** Flask-Login, session-based
+
+Not yet set up, but in the Part I HLD: Apache (deployment reverse proxy), Vitest (frontend tests).
 
 ## Team Roles (Part I)
 

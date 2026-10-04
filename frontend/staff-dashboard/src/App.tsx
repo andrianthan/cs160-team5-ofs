@@ -1,8 +1,8 @@
-import { BrowserRouter, Routes, Route, Navigate, NavLink } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, NavLink, type NavLinkRenderProps } from "react-router-dom";
 import PageStub from "./pages/PageStub";
 
 function Nav() {
-  const link = ({ isActive }) =>
+  const link = ({ isActive }: NavLinkRenderProps) =>
     `px-3 py-2 rounded-full text-sm font-medium ${isActive ? "bg-brand-50 text-brand-700" : "text-brand-900/60"}`;
   return (
     <header className="sticky top-0 bg-white/90 backdrop-blur border-b border-brand-100">

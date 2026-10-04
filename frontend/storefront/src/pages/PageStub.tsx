@@ -2,7 +2,13 @@
 // Delete this file's usage once a page has real content — see docs/part2 LLD 5
 // (Frontend Component Breakdown) for the route table and docs/part2/backlog.md
 // for the task/owner each page maps to.
-export default function PageStub({ title, task, owner }) {
+type PageStubProps = {
+  title: string;
+  task?: string;
+  owner?: string;
+};
+
+export default function PageStub({ title, task, owner }: PageStubProps) {
   return (
     <div className="max-w-xl mx-auto px-4 py-16 text-center">
       <h1 className="font-display text-2xl font-bold text-brand-900 mb-2">{title}</h1>

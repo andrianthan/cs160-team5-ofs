@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, NavLink } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, NavLink, type NavLinkRenderProps } from "react-router-dom";
 import PageStub from "./pages/PageStub";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage"
@@ -6,7 +6,7 @@ import RegisterPage from "./pages/RegisterPage"
 // Route table from docs/part2 LLD 5 (Frontend Component Breakdown), owners from
 // docs/part2/backlog.md. Replace each PageStub with the real page as it's built.
 function Nav() {
-  const link = ({ isActive }) =>
+  const link = ({ isActive }: NavLinkRenderProps) =>
     `px-3 py-2 rounded-full text-sm font-medium ${isActive ? "bg-brand-50 text-brand-700" : "text-brand-900/60"}`;
   return (
     <header className="sticky top-0 bg-white/90 backdrop-blur border-b border-brand-100">

@@ -4,7 +4,7 @@ import { useAuth } from "../AuthContext";
 
 export default function LoginPage() {
     const { user, login } = useAuth();
-            const location = useLocation();
+    const location = useLocation();
     const navigate = useNavigate();
 
     const [email, setEmail] = useState<string>("");
@@ -18,6 +18,7 @@ export default function LoginPage() {
     if (user === undefined) {
         return null;
     }
+    // send user back to original page if signed in
     if (user) {
         const from = (location.state as { from?: string } | null)?.from ?? "/browse";
         return <Navigate to={from} replace />;

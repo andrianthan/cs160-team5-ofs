@@ -12,7 +12,8 @@ type CallResult<T> =
     | { ok: false; status: number; data: { message?: string; error?: string } };
 
 type AuthContextValue = {
-    user: User | null | undefined; // undefined = still checking, null = signed out
+    // undefined = still checking, null = signed out
+    user: User | null | undefined; 
     login: (email: string, password: string) => Promise<CallResult<User>>;
     register: (name: string, email: string, password: string) => Promise<CallResult<User>>;
     logout: () => Promise<void>;
@@ -68,26 +69,31 @@ export function AuthProvider({portal, children}: AuthProviderProps) {
     const [user, setUser] = useState<User | undefined | null>(undefined);
 
     useEffect(() => {
-
-        // check if logged in (call /api/me/)
+        // check if logged in:
+        // GET /api/auth/me
         const refresh = () => {
             call<User>("me", "GET").then((r) => {
+                // set if logged in
                 if (r.ok) {
                     setUser(r.data);
+                // logged out
                 } else if (r.status == 401) {
                     setUser(null);
+                // error
                 } else {
                     setUser((u) => (u === undefined ? null : u));
                 }
             });
         };
 
+        // check if user logged in on other tab
         const onVisible = () => {
             if (document.visibilityState === "visible") {
                 refresh();
             } 
         };
 
+        // check if session has expired (NOT IMPLEMENTED WTF)
         const onExpired = () => {
             setUser(null);
         };
@@ -95,6 +101,7 @@ export function AuthProvider({portal, children}: AuthProviderProps) {
         refresh();
 
         document.addEventListener("visibilitychange", onVisible);
+        // TODO: create auth:expired event
         window.addEventListener("auth:expired", onExpired);
 
         return () => {
@@ -103,9 +110,14 @@ export function AuthProvider({portal, children}: AuthProviderProps) {
         };
     }, []);
 
+    // give login and register functions for user
+    // login() -- POST /api/auth/login 
+    // register() -- POST /api/auth/register
     const signIn = async (path: string, body: Record<string, unknown>) => {
         const r = await call<User>(path, "POST", body);
-        if (r.ok) setUser(r.data);
+        if (r.ok) {
+            setUser(r.data);
+        } 
         return r;
     };
 
@@ -125,6 +137,9 @@ export function AuthProvider({portal, children}: AuthProviderProps) {
 
 export function useAuth(): AuthContextValue {
     const ctx = useContext(AuthContext);
-    if (!ctx) throw new Error("useAuth must be used inside <AuthProvider>");
+    // verify 
+    if (!ctx) {
+        throw new Error("useAuth must be used inside <AuthProvider>");
+    }
     return ctx;
 }

@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import { useState } from 'react';
 import { Link, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 
@@ -10,11 +10,10 @@ export default function LoginPage() {
     const [email, setEmail] = useState<string>("");
     const [password, setPassword] = useState<string>("");
 
-    const [busy, setBusy] = useState(false);
+    const [busy, setBusy] = useState<boolean>(false);
 
     const [error, setError] = useState<null | string>();
 
-    // check if user is signed in
     if (user === undefined) {
         return null;
     }

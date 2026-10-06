@@ -84,7 +84,12 @@ export default function App() {
           />
           <Route path="/register" element={<RegisterPage/>} />
           <Route path="/browse" element={<PageStub title="Browse Products" task="T07" owner="Kelvin" />} />
-          <Route path="/cart" element={<PageStub title="Cart" task="T09" owner="Kelvin" />} />
+          <Route path="/cart" element={
+            <RequireAuth>
+              <PageStub title="Cart" task="T09" owner="Kelvin" />
+            </RequireAuth>
+            } 
+          />
           <Route
             path="/checkout"
             element={

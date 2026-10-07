@@ -32,8 +32,24 @@ const OFS = (() => {
   ];
 
   const SEED_ROBOTS = [
-    { id: "R1", status: "Idle" },
-    { id: "R2", status: "Idle" },
+    { id: "R1",
+      status: "Idle",
+      location: {
+        lat: 37.3352,
+        lng: -121.8811
+      },
+      progress: 0,
+      etaMinutes: null
+    },
+    { id: "R2",
+      status: "Idle",
+      location: {
+        lat: 37.3352,
+        lng: -121.8811
+      },
+      progress: 0,
+      etaMinutes: null
+    },
   ];
 
   const SEED_TRIPS = [];

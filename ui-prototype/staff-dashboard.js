@@ -227,7 +227,11 @@ function renderDispatch() {
       t.status = "Out for Delivery";
       const robots = OFS.getRobots();
       const robot = robots.find(r => r.id === t.robot);
-      if (robot) robot.status = "Out for Delivery";
+      if (robot) {
+        robot.status = "Out for Delivery";
+        robot.progress = 15;
+        robot.etaMinutes = 12;
+      }
       const orders = OFS.getOrders();
       t.orderIds.forEach(id => { const o = orders.find(x => x.id === id); if (o) o.status = "Out for Delivery"; });
       OFS.setTrips(trips);

@@ -335,21 +335,41 @@ function renderTrack() {
   const auth = getAuth();
   const orders = OFS.getOrders().filter(o => o.customerEmail === auth.email);
   const host = document.getElementById("track-list");
+
+
   if (orders.length === 0) {
     host.innerHTML = `<div class="text-brand-900/50 py-16 text-center border-2 border-dashed border-brand-200 rounded-3xl">
       <i class="ph ph-truck text-3xl mb-2 block" aria-hidden="true"></i>
       No orders yet. <a href="#/browse" class="text-brand-700 font-medium hover:underline">Go shopping →</a>
     </div>`;
-    return;
+    return;F
   }
 
   const active = orders.find(o => o.status === "Out for Delivery");
   const rest = orders.filter(o => o !== active);
 
+  let activeTrip = null;
+  let activeRobot = null;
+
+  if (active && active.tripId) {
+    activeTrip = OFS.getTrips().find(
+        t => t.id === active.tripId
+    );
+
+    if (activeTrip && activeTrip.robot) {
+      activeRobot = OFS.getRobots().find(
+          r => r.id === activeTrip.robot
+      );
+    }
+  }
+
+  const robotProgress = activeRobot?.progress ?? 0;
+  const robotLeft = Math.min(85, Math.max(15, 15 + robotProgress * 0.7));
+
   const heroCard = active ? `
     <div class="relative rounded-3xl overflow-hidden border border-brand-100 shadow-sm shadow-brand-900/5 mb-5">
       <div class="relative h-40 bg-brand-100" style="background-image: radial-gradient(circle, rgba(21,128,61,0.15) 1px, transparent 1px); background-size: 10px 10px;">
-        <div class="map-dot absolute w-4 h-4 bg-brand-700 rounded-full border-2 border-white shadow" style="top: 38%; left: 58%;"></div>
+        <div class="map-dot absolute w-4 h-4 bg-brand-700 rounded-full border-2 border-white shadow" style="top: 38%; left: ${robotLeft}%;"></div>
         <div class="absolute w-2 h-2 bg-brand-900/30 rounded-full" style="top: 65%; left: 20%;" aria-hidden="true"></div>
         <div class="absolute top-3 left-3 bg-white/90 backdrop-blur text-xs font-medium text-brand-900 rounded-full px-3 py-1 flex items-center gap-1.5 shadow-sm">
           <i class="ph ph-robot text-brand-600" aria-hidden="true"></i> Robot en route
@@ -362,7 +382,14 @@ function renderTrack() {
         </div>
         <div class="text-right">
           <div class="text-xs text-brand-900/50">Arriving in</div>
-          <div class="font-display font-bold text-brand-700">12 min</div>
+          <div class="font-display font-bold text-brand-700">
+            ${activeRobot?.etaMinutes ?? "--"} min
+          </div>
+          <div class="text-xs text-brand-900/50 mt-1">
+            ${activeRobot
+              ? `${activeRobot.id} · ${activeRobot.status}`
+              : "Waiting for robot"}
+          </div>
         </div>
       </div>
       <div class="bg-white px-4 pb-4">${statusTimeline(active.status)}</div>

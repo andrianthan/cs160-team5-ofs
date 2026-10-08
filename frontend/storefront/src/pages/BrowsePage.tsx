@@ -38,7 +38,7 @@ export default function BrowsePage() {
 function RegisterBanner() {
     return(
         <div className="">
-
+            
         </div>
     )
 }

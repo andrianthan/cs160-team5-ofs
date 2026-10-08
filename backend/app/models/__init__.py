@@ -8,3 +8,4 @@
 #   from .product import Product
 # so `from app.models import User` works and Flask-Migrate can see them.
 from .user import User 
+from .product import Product

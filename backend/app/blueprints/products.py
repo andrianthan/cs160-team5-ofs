@@ -10,10 +10,38 @@ def _body():
     data = request.get_json(silent=True)
     return data if isinstance(data, dict) else {}
 
+def _number(v):  # a JSON number, not true/false
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
 
-def _text(data, key):
-    value = data.get(key)
-    return value.strip() if isinstance(value, str) else ""
+def _whole(v):
+    return isinstance(v, int) and not isinstance(v, bool) and 0 <= v <= 2_147_483_647
+
+RULES = {
+    "name": lambda v: isinstance(v, str) and 0 < len(v.strip()) <= 160,
+    "category": lambda v: isinstance(v, str) and 0 < len(v.strip()) <= 80,
+    "description": lambda v: v is None or isinstance(v, str),
+    "image_url": lambda v: v is None or isinstance(v, str),
+    "price": lambda v: _number(v) and 0 <= v < 10**8 and v == round(v, 2),
+    "weight_lb": lambda v: _number(v) and 0 < v < 10**6 and v == round(v, 2),
+    "stock_qty": _whole,
+    "low_stock_threshold": _whole,
+    "active": lambda v: isinstance(v, bool),
+}
+
+
+def _clean(data, creating):
+    """Returns (values, None) or (None, error message)."""
+    if creating and (missing := REQUIRED - data.keys()):
+        return None, f"Required: {', '.join(sorted(missing))}"
+    values = {k: data[k] for k in RULES if k in data}  # unknown keys are ignored
+    if not values:
+        return None, "Nothing to update"
+    if bad := [k for k, v in values.items() if not RULES[k](v)]:
+        return None, f"Invalid: {', '.join(bad)}"
+    for k in ("name", "category"):
+        if k in values:
+            values[k] = values[k].strip()
+    return values, None
 
 
 @bp.get("")
@@ -31,17 +59,24 @@ def update_product(product_id):
     if product is None:
         return jsonify(error="Product not found"), 404
 
-    data = request.get_json(silent=True)
+    values, error = _clean(_body(), creating=False)
+    if error:
+        return jsonify(error=error), 400
 
-    if not isinstance(data, dict) or not data:
-        return jsonify(error="Invalid input"), 400
-
-
-
-    return jsonify(error="not_implemented"), 2501
+    for column, value in values.items():
+        setattr(product, column, value)
+    db.session.commit()
+    return jsonify(product.to_dict())
 
 
 @bp.post("")
 @manager_required
 def create_product():
-    return jsonify(error="not_implemented"), 501
+    values, error = _clean(_body(), creating=True)
+    if error:
+        return jsonify(error=error), 400
+
+    product = Product(**values)
+    db.session.add(product)
+    db.session.commit()
+    return jsonify(product.to_dict()), 201

@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from ..extensions import db
 
-REQUIRED = {"name", "category", "price", "weightLb"}
+REQUIRED = {"name", "category", "price", "weight_lb"}
 OPTIONAL = {"description", "weightLb", "stock", "lowStockThreshold", "imageUrl", "active"}
 
 class Product(db.Model):

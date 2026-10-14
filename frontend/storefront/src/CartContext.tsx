@@ -92,11 +92,7 @@ async function requestCart(url: string, options?: RequestInit): Promise<ServerRe
     }
 }
 
-export function CartProvider({
-    children,
-}: {
-    children: ReactNode;
-}) {
+export function CartProvider({ children }: { children: ReactNode; }) {
     const { user } = useAuth();
 
     const [cart, setCart] = useState<Cart>(EMPTY_CART);

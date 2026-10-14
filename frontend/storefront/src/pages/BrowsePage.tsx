@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../AuthContext";
+import { useCart } from "../CartContext";
 
 // what GET /api/products gives u for each product
 export type Product = {
@@ -17,6 +18,7 @@ export type Product = {
 
 // load products
 function useProducts() {
+
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -36,9 +38,13 @@ export default function BrowsePage() {
     const { user } = useAuth();
     const navigate = useNavigate();
     const { products, loading, error } = useProducts();
+    const { quantityOf, changeBy } = useCart();
 
-    const [ search, setSearch ] = useState<string>(""); // searchbar val
-    const [ category, setCategory ] = useState<string>("All"); // current category
+    const [cartError, setCartError] = useState<string | null>(null);
+    const [addingId, setAddingId] = useState<number | null>(null);
+
+    const [search, setSearch] = useState<string>(""); // searchbar val
+    const [category, setCategory] = useState<string>("All"); // current category
     // create categories dynamically
     const categories = ["All", ...new Set(products.map((p) => p.category))];
     // filter by category and search
@@ -49,7 +55,7 @@ export default function BrowsePage() {
 
     // passed to ProductTile
     // handle when user clicks on the add button
-    const handleAdd = (productId: number) => {
+    const handleAdd = async (productId: number) => {
         // if not logged in:
         // -- redirect to login page
         if (!user) {
@@ -59,13 +65,24 @@ export default function BrowsePage() {
         }
 
         // TODO: handle add to cart
-        console.log("add to cart:", productId); // temp
+        console.log("add to cart:", productId);
+
+        setCartError(null);
+        setAddingId(productId);
+
+        const result = await changeBy(productId, 1);
+
+        if (!result.ok) {
+            setCartError(result.message);
+        }
+
+        setAddingId(null);
     };
 
-    return(
+    return (
         <div className="max-w-5xl mx-auto px-4 py-6">
             {/**banner if user isnt signed in  */}
-            {!user && (<RegisterBanner/>)}
+            {!user && (<RegisterBanner />)}
 
             {/** hi user!!! */}
             {user && (
@@ -74,14 +91,14 @@ export default function BrowsePage() {
 
             <h1 className="font-display text-2xl font-bold mb-4">Browse Products</h1>
 
-                <input
-                    type="search"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search products"
-                    aria-label="Search products"
-                    className="w-full sm:w-72 mb-4 border border-brand-200 rounded-full px-4 py-2 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition"
-                />
+            <input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search products"
+                aria-label="Search products"
+                className="w-full sm:w-72 mb-4 border border-brand-200 rounded-full px-4 py-2 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition"
+            />
 
             {categories.length > 2 && (
                 <div className="flex flex-wrap gap-2 mb-4">
@@ -90,9 +107,8 @@ export default function BrowsePage() {
                             key={c}
                             onClick={() => setCategory(c)}
                             aria-pressed={c === category}
-                            className={`px-3 py-1.5 rounded-full text-sm font-medium cursor-pointer ${
-                                c === category ? "bg-brand-600 text-white" : "bg-brand-50 text-brand-700 hover:bg-brand-100"
-                            }`}
+                            className={`px-3 py-1.5 rounded-full text-sm font-medium cursor-pointer ${c === category ? "bg-brand-600 text-white" : "bg-brand-50 text-brand-700 hover:bg-brand-100"
+                                }`}
                         >
                             {c}
                         </button>
@@ -109,9 +125,21 @@ export default function BrowsePage() {
                 <p className="text-brand-900/60">No products match your search.</p>
             )}
 
+            {cartError && (
+                <p role="alert" className="mb-4 text-sm text-red-600">
+                    {cartError}
+                </p>
+            )}
+
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                 {visible.map((p) => (
-                    <ProductTile key={p.id} product={p} onAdd={handleAdd} />
+                    <ProductTile
+                        key={p.id}
+                        product={p}
+                        quantityInCart={quantityOf(p.id)}
+                        adding={addingId === p.id}
+                        onAdd={handleAdd}
+                    />
                 ))}
             </div>
         </div>
@@ -121,7 +149,7 @@ export default function BrowsePage() {
 
 // show banner if user isn't logged in
 function RegisterBanner() {
-    return(
+    return (
         <div className="mb-4 rounded-2xl bg-brand-50 p-4 text-sm text-brand-900/80">
             New here?{" "}
             <Link to="/register" className="font-medium text-brand-700 underline">
@@ -133,17 +161,18 @@ function RegisterBanner() {
 }
 
 type ProductTileProps = {
-    product : Product;
+    product: Product;
     quantityInCart?: number;
+    adding: boolean;
     onAdd: (productId: number) => void;
 };
 
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
-function ProductTile({ product, quantityInCart = 0, onAdd }: ProductTileProps) {
-    const outOfStock : boolean = product.stock <= 0;
+function ProductTile({ product, quantityInCart = 0, adding, onAdd }: ProductTileProps) {
+    const outOfStock: boolean = product.stock <= 0;
 
-    return(
+    return (
         <div className="bg-white border border-brand-100 rounded-3xl p-4 flex flex-col gap-2 hover:shadow-md hover:shadow-brand-900/5 transition-shadow duration-200">
             {product.imageUrl ? (
                 <img
@@ -173,10 +202,15 @@ function ProductTile({ product, quantityInCart = 0, onAdd }: ProductTileProps) {
                     <span className="text-xs text-red-600 font-medium">Out of stock</span>
                 ) : (
                     <button
+                        disabled={adding}
                         onClick={() => onAdd(product.id)}
-                        className="text-xs font-medium bg-brand-600 hover:bg-brand-700 text-white rounded-full px-3 py-1.5 transition-colors duration-200 cursor-pointer"
+                        className="text-xs font-medium bg-brand-600 hover:bg-brand-700 disabled:bg-gray-400 text-white rounded-full px-3 py-1.5"
                     >
-                        {quantityInCart > 0 ? `In cart (${quantityInCart})` : "Add"}
+                        {adding
+                            ? "Adding..."
+                            : quantityInCart > 0
+                                ? `In cart (${quantityInCart})`
+                                : "Add"}
                     </button>
                 )}
             </div>

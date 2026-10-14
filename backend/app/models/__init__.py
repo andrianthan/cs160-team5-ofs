@@ -9,3 +9,5 @@
 # so `from app.models import User` works and Flask-Migrate can see them.
 from .user import User 
 from .product import Product
+from .cart import Cart, CartLine
+from .payment import Payment

@@ -6,7 +6,8 @@ import RequireAuth from "./RequireAuth";
 
 import PageStub from "./pages/PageStub";
 import LoginPage from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage"
+import RegisterPage from "./pages/RegisterPage";
+import BrowsePage from "./pages/BrowsePage";
 
 // Route table from docs/part2 LLD 5 (Frontend Component Breakdown), owners from
 // docs/part2/backlog.md. Replace each PageStub with the real page as it's built.
@@ -83,7 +84,9 @@ export default function App() {
             }
           />
           <Route path="/register" element={<RegisterPage/>} />
-          <Route path="/browse" element={<PageStub title="Browse Products" task="T07" owner="Kelvin" />} />
+          <Route path="/browse" element={
+            <BrowsePage/>} 
+          />
           <Route path="/cart" element={
             <RequireAuth>
               <PageStub title="Cart" task="T09" owner="Kelvin" />
@@ -108,7 +111,6 @@ export default function App() {
           />
         </Routes>
       </AuthProvider>
-   
     </BrowserRouter>
   );
 }

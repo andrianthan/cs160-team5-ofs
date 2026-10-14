@@ -2,12 +2,14 @@ import { useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, NavLink, type NavLinkRenderProps } from "react-router-dom";
 
 import { AuthProvider, useAuth } from "./AuthContext";
+import { CartProvider } from "./CartContext";
 import RequireAuth from "./RequireAuth";
 
 import PageStub from "./pages/PageStub";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import BrowsePage from "./pages/BrowsePage";
+import CartPage from "./pages/CartPage";
 
 // Route table from docs/part2 LLD 5 (Frontend Component Breakdown), owners from
 // docs/part2/backlog.md. Replace each PageStub with the real page as it's built.
@@ -74,42 +76,44 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider portal="customer">
-        <Nav />
-        <Routes>
-          <Route path="/" element={<Navigate to="/browse" replace />} />
-          <Route 
-            path="/login"
-            element={
-              <LoginPage/>
-            }
-          />
-          <Route path="/register" element={<RegisterPage/>} />
-          <Route path="/browse" element={
-            <BrowsePage/>} 
-          />
-          <Route path="/cart" element={
-            <RequireAuth>
-              <PageStub title="Cart" task="T09" owner="Kelvin" />
-            </RequireAuth>
-            } 
-          />
-          <Route
-            path="/checkout"
-            element={
+        <CartProvider>
+          <Nav />
+          <Routes>
+            <Route path="/" element={<Navigate to="/browse" replace />} />
+            <Route
+              path="/login"
+              element={
+                <LoginPage />
+              }
+            />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/browse" element={
+              <BrowsePage />}
+            />
+            <Route path="/cart" element={
               <RequireAuth>
-                <PageStub title="Checkout" task="T08 / T10 / T11" owner="Andrian" />
+                <CartPage />
               </RequireAuth>
             }
-          />
-          <Route
-            path="/track"
-            element={
-              <RequireAuth>
-                <PageStub title="Track Orders" task="T16" owner="Jorge" />
-              </RequireAuth>
-            }
-          />
-        </Routes>
+            />
+            <Route
+              path="/checkout"
+              element={
+                <RequireAuth>
+                  <PageStub title="Checkout" task="T08 / T10 / T11" owner="Andrian" />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/track"
+              element={
+                <RequireAuth>
+                  <PageStub title="Track Orders" task="T16" owner="Jorge" />
+                </RequireAuth>
+              }
+            />
+          </Routes>
+        </CartProvider>
       </AuthProvider>
     </BrowserRouter>
   );

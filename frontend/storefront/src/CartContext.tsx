@@ -28,13 +28,14 @@ export type Cart = {
     overweight: boolean;
 };
 
-type CartResult =
-    | { ok: true }
-    | { ok: false; message: string };
+export type CartResult = { ok: true } | { ok: false; message: string };
+
 
 type CartContextValue = {
     cart: Cart;
     count: number;
+    loading: boolean;
+    error: string | null;
     quantityOf: (productId: number) => number;
     changeBy: (
         productId: number,
@@ -96,6 +97,8 @@ export function CartProvider({ children }: { children: ReactNode; }) {
     const { user } = useAuth();
 
     const [cart, setCart] = useState<Cart>(EMPTY_CART);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     // Load the cart when the user logs in
     useEffect(() => {
@@ -105,6 +108,9 @@ export function CartProvider({ children }: { children: ReactNode; }) {
         }
 
         let cancelled = false;
+        setCart(EMPTY_CART);
+        setLoading(true);
+        setError(null);
 
         requestCart("/api/cart").then((result) => {
             if (cancelled) return;
@@ -112,6 +118,8 @@ export function CartProvider({ children }: { children: ReactNode; }) {
             if (result.ok) {
                 setCart(result.cart);
             }
+
+            setLoading(false);
         });
 
         return () => {
@@ -215,6 +223,8 @@ export function CartProvider({ children }: { children: ReactNode; }) {
     const value: CartContextValue = {
         cart,
         count,
+        loading,
+        error,
         quantityOf,
         changeBy,
         setQuantity,

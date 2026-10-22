@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate, NavLink, type NavLinkRenderProps } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, NavLink, type NavLinkRenderProps } from "react-router-dom";
 
 import { AuthProvider, useAuth } from "./AuthContext";
 import { CartProvider } from "./CartContext";
@@ -10,6 +10,7 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import BrowsePage from "./pages/BrowsePage";
 import CartPage from "./pages/CartPage";
+import CartMenu from "./components/CartMenu";
 
 // Route table from docs/part2 LLD 5 (Frontend Component Breakdown), owners from
 // docs/part2/backlog.md. Replace each PageStub with the real page as it's built.
@@ -43,16 +44,18 @@ function ProfileMenu() {
 
 function Nav() {
   const { user } = useAuth();
+  const { pathname } = useLocation();
 
   const link = ({ isActive }: NavLinkRenderProps) =>
     `px-3 py-2 rounded-full text-sm font-medium ${isActive ? "bg-brand-50 text-brand-700" : "text-brand-900/60"}`;
+
   return (
-    <header className="sticky top-0 bg-white/90 backdrop-blur border-b border-brand-100">
-      <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+    <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-brand-100">
+      <div className="relative max-w-5xl mx-auto px-4 py-3 flex flex-wrap gap-y-2 items-center justify-between">
         <span className="font-display font-bold text-brand-700 text-lg">OFS</span>
-        <nav className="flex gap-1">
+        <nav className="flex flex-wrap items-center gap-1" aria-label="Main navigation">
           <NavLink to="/browse" className={link}>Browse</NavLink>
-          <NavLink to="/cart" className={link}>Cart</NavLink>
+          <CartMenu key={pathname} />
           <NavLink to="/track" className={link}>Track</NavLink>
           {user && <ProfileMenu />}
           {user === null && (

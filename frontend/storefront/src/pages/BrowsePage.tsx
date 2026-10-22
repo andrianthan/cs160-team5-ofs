@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-import CartPreview from "../components/CartPreview";
 import ProductDetails from "../components/ProductDetails";
 
 import { useAuth } from "../AuthContext";
@@ -113,32 +112,18 @@ export default function BrowsePage() {
         }
     }
 
-    async function handleAdd(productId: number) {
+    const handleAdd = async (productId: number) => {
         await saveQuantity(productId, quantityOf(productId) + 1);
     }
 
-    async function emptyCart() {
-        if (cartDisabled) return;
-        setBusy(true);
-        setCartError(null);
-        setNotice(null);
-        try {
-            const result = await clear();
-            if (!result.ok) setCartError(result.message);
-            else setNotice("Cart emptied.");
-        } finally {
-            setBusy(false);
-        }
-    }
-
-    function openProduct(product: Product) {
+    const openProduct = (product: Product) => {
         setCartError(null);
         setNotice(null);
         setSelectedProduct(product);
     }
 
     return (
-        <div className="max-w-5xl mx-auto px-4 pt-6 pb-24 lg:pb-6">
+        <div className="max-w-5xl mx-auto px-4 py-6">
             {/**banner if user isnt signed in  */}
             {!user && <RegisterBanner />}
 
@@ -153,19 +138,9 @@ export default function BrowsePage() {
                 <h1 className="font-display text-2xl font-bold">
                     Browse Products
                 </h1>
-                <button
-                    type="button"
-                    aria-expanded={previewOpen}
-                    aria-controls="browse-cart-preview"
-                    onClick={() => setPreviewOpen(!previewOpen)}
-                    className="rounded-full bg-brand-50 px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-100 lg:hidden"
-                >
-                    {previewOpen ? "Hide cart" : "Preview cart"}
-                    {user ? ` (${count})` : ""}
-                </button>
             </div>
 
-            <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
+            <div>
                 <section className="min-w-0" aria-label="Product catalog">
                     <input
                         type="search"
@@ -228,7 +203,7 @@ export default function BrowsePage() {
                         </p>
                     )}
 
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                         {visible.map((p) => (
                             <ProductTile
                                 key={p.id}
@@ -241,17 +216,6 @@ export default function BrowsePage() {
                         ))}
                     </div>
                 </section>
-                <div
-                    id="browse-cart-preview"
-                    className={`${previewOpen ? "block" : "hidden"} order-first lg:order-none lg:block lg:sticky lg:top-24`}
-                >
-                    <CartPreview
-                        busy={busy}
-                        message={cartError}
-                        onChange={saveQuantity}
-                        onClear={emptyCart}
-                    />
-                </div>
             </div>
 
             {selectedProduct && (
@@ -267,16 +231,6 @@ export default function BrowsePage() {
                     onSave={saveQuantity}
                     onClose={() => setSelectedProduct(null)}
                 />
-            )}
-            {user && !previewOpen && cart.lines.length > 0 && (
-                <button
-                    type="button"
-                    onClick={() => setPreviewOpen(true)}
-                    className="fixed bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-3 whitespace-nowrap rounded-full bg-brand-800 px-5 py-3 text-sm font-medium text-white shadow-lg shadow-brand-900/20 hover:bg-brand-900 lg:hidden"
-                >
-                    {count} item{count === 1 ? "" : "s"} ·{" "}
-                    {money.format(cart.subtotal)} <span>Preview cart ↑</span>
-                </button>
             )}
         </div>
     );

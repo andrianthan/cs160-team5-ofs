@@ -35,6 +35,7 @@ type CartContextValue = {
     cart: Cart;
     count: number;
     loading: boolean;
+    updating: boolean;
     error: string | null;
     quantityOf: (productId: number) => number;
     changeBy: (
@@ -95,15 +96,19 @@ async function requestCart(url: string, options?: RequestInit): Promise<ServerRe
 
 export function CartProvider({ children }: { children: ReactNode; }) {
     const { user } = useAuth();
+    const userId = user?.id;
 
     const [cart, setCart] = useState<Cart>(EMPTY_CART);
     const [loading, setLoading] = useState(true);
+    const [updating, setUpdating] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     // Load the cart when the user logs in
     useEffect(() => {
-        if (!user) {
+        if (userId === undefined) {
             setCart(EMPTY_CART);
+            setLoading(false);
+            setError(null);
             return;
         }
 
@@ -117,6 +122,8 @@ export function CartProvider({ children }: { children: ReactNode; }) {
 
             if (result.ok) {
                 setCart(result.cart);
+            } else {
+                setError(result.message);
             }
 
             setLoading(false);
@@ -125,10 +132,13 @@ export function CartProvider({ children }: { children: ReactNode; }) {
         return () => {
             cancelled = true;
         };
-    }, [user?.id]);
+    }, [userId]);
 
     // set the quantity of a product
-    const setQuantity = async (productId: number, quantity: number): Promise<CartResult> => {
+    const setQuantity = async (
+        productId: number,
+        quantity: number,
+    ): Promise<CartResult> => {
         if (!user) {
             return {
                 ok: false,
@@ -136,11 +146,18 @@ export function CartProvider({ children }: { children: ReactNode; }) {
             };
         }
 
-        const safeQuantity = Math.max(0, quantity);
+        if (updating || loading) {
+            return {
+                ok: false,
+                message: "Please wait for your cart to finish updating.",
+            };
+        }
+        if (error) return { ok: false, message: error };
 
-        const result = await requestCart(
-            `/api/cart/items/${productId}`,
-            {
+        const safeQuantity = Math.max(0, quantity);
+        setUpdating(true);
+        try {
+            const result = await requestCart(`/api/cart/items/${productId}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -148,30 +165,31 @@ export function CartProvider({ children }: { children: ReactNode; }) {
                 body: JSON.stringify({
                     quantity: safeQuantity,
                 }),
+            });
+
+            if (!result.ok) {
+                return result;
             }
-        );
 
-        if (!result.ok) {
-            return result;
+            setCart(result.cart);
+
+            return { ok: true };
+        } finally {
+            setUpdating(false);
         }
-
-        setCart(result.cart);
-
-        return { ok: true };
-    }
+    };
 
     // update a product quantity by an amount
-    const changeBy = async (productId: number, amount: number): Promise<CartResult> => {
+    const changeBy = async (
+        productId: number,
+        amount: number,
+    ): Promise<CartResult> => {
         const currentQuantity =
-            cart.lines.find(
-                (line) => line.productId === productId
-            )?.quantity ?? 0;
+            cart.lines.find((line) => line.productId === productId)?.quantity ??
+            0;
 
-        return setQuantity(
-            productId,
-            currentQuantity + amount
-        );
-    }
+        return setQuantity(productId, currentQuantity + amount);
+    };
 
     // clear the cart
     const clear = async (): Promise<CartResult> => {
@@ -182,48 +200,64 @@ export function CartProvider({ children }: { children: ReactNode; }) {
             };
         }
 
-        const result = await requestCart("/api/cart", {
-            method: "DELETE",
-        });
-
-        if (!result.ok) {
-            return result;
+        if (updating || loading) {
+            return {
+                ok: false,
+                message: "Please wait for your cart to finish updating.",
+            };
         }
+        if (error) return { ok: false, message: error };
 
-        setCart(result.cart);
+        setUpdating(true);
+        try {
+            const result = await requestCart("/api/cart", {
+                method: "DELETE",
+            });
 
-        return { ok: true };
-    }
+            if (!result.ok) {
+                return result;
+            }
+
+            setCart(result.cart);
+
+            return { ok: true };
+        } finally {
+            setUpdating(false);
+        }
+    };
 
     // refetch the cart
     const refresh = async (): Promise<void> => {
+        if (!user || updating || loading) return;
+        setLoading(true);
+        setError(null);
         const result = await requestCart("/api/cart");
 
         if (result.ok) {
             setCart(result.cart);
+        } else {
+            setError(result.message);
         }
-    }
+        setLoading(false);
+    };
 
     const count = cart.lines
         .filter((line) => !line.unavailable)
-        .reduce(
-            (total, line) => total + line.quantity,
-            0
-        );
+        .reduce((total, line) => total + line.quantity, 0);
 
     // get the quantity of a product
     const quantityOf = (productId: number): number => {
         return (
-            cart.lines.find(
-                (line) => line.productId === productId
-            )?.quantity ?? 0
+            cart.lines.find((line) => line.productId === productId)?.quantity ??
+            0
         );
-    }
+    };
 
     const value: CartContextValue = {
         cart,
         count,
         loading,
+        updating,
         error,
         quantityOf,
         changeBy,
@@ -233,11 +267,10 @@ export function CartProvider({ children }: { children: ReactNode; }) {
     };
 
     return (
-        <CartContext.Provider value={value}>
-            {children}
-        </CartContext.Provider>
+        <CartContext.Provider value={value}>{children}</CartContext.Provider>
     );
 }
+
 
 export function useCart(): CartContextValue {
     const context = useContext(CartContext);

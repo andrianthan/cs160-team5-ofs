@@ -294,9 +294,6 @@ function ProductTile({ product, quantityInCart = 0, disabled, onAdd, onOpen }: P
                 <div className="text-xs text-brand-900/50">
                     {product.weightLb} lb · {product.category}
                 </div>
-                <span className="text-xs font-medium text-brand-700">
-                    View details →
-                </span>
             </button>
 
             <div className="flex items-center justify-between mt-1">

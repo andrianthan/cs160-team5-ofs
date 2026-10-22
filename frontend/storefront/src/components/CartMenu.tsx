@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { useCart } from "../CartContext";
 import CartPreview from "./CartPreview";
 
@@ -7,6 +7,10 @@ export default function CartMenu() {
     const { count, setQuantity, clear, updating } = useCart();
     const [open, setOpen] = useState(false);
     const [message, setMessage] = useState<string | null>(null);
+
+    const { pathname } = useLocation();
+
+    const onCart: boolean = pathname === '/cart';
 
     // Close when someone clicks or taps outside the cart and its preview.
     useEffect(() => {
@@ -92,30 +96,32 @@ export default function CartMenu() {
                 </NavLink>
                 {/* A separate toggle makes the preview usable on touch screens.
                     The Cart link above still opens the full Cart page. */}
-                <button
-                    id="nav-cart-toggle"
-                    type="button"
-                    aria-label="Toggle cart preview"
-                    aria-expanded={open}
-                    aria-controls="nav-cart-preview"
-                    onClick={() => setOpen(!open)}
-                    className="flex h-9 w-7 items-center justify-center rounded-full text-brand-900/60 hover:bg-brand-50 focus-visible:outline-2 focus-visible:outline-brand-600"
-                >
-                    <svg
-                        width="12"
-                        height="12"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        aria-hidden="true"
+                {!onCart && (
+                    <button
+                        id="nav-cart-toggle"
+                        type="button"
+                        aria-label="Toggle cart preview"
+                        aria-expanded={open}
+                        aria-controls="nav-cart-preview"
+                        onClick={() => setOpen(!open)}
+                        className="flex h-9 w-7 items-center justify-center rounded-full text-brand-900/60 hover:bg-brand-50 focus-visible:outline-2 focus-visible:outline-brand-600"
                     >
-                        <path d={open ? "m6 15 6-6 6 6" : "m6 9 6 6 6-6"} />
-                    </svg>
-                </button>
+                        <svg
+                            width="12"
+                            height="12"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            aria-hidden="true"
+                        >
+                            <path d={open ? "m6 15 6-6 6 6" : "m6 9 6 6 6-6"} />
+                        </svg>
+                    </button>
+                )}
             </div>
 
-            {open && (
+            {(open && !onCart) && (
                 // Padding bridges the gap so moving from Cart into the panel keeps it open.
                 <div className="absolute right-4 top-full z-50 w-[calc(100vw_-_2rem)] pt-2 sm:right-0 sm:w-80">
                     <div

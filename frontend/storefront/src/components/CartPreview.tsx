@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useAuth } from "../AuthContext";
+import { useAuth } from "@ofs/shared/auth";
 import { useCart } from "../CartContext";
 
 type CartPreviewProps = {

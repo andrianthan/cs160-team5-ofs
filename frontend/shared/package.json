@@ -1,0 +1,16 @@
+{
+  "name": "@ofs/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./api": "./src/api/client.ts",
+    "./auth": "./src/auth/index.ts",
+    "./components": "./src/components/index.ts"
+  },
+  "peerDependencies": {
+    "react": "^19.2.8",
+    "react-router-dom": "^7.18.4"
+  }
+}

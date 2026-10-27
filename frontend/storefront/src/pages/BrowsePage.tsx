@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 
 import ProductDetails from "../components/ProductDetails";
 
-import { useAuth } from "../AuthContext";
+import { useAuth } from "@ofs/shared/auth";
 import { useCart, type CartResult } from "../CartContext";
 
 // what GET /api/products gives u for each product
@@ -43,9 +43,6 @@ export default function BrowsePage() {
     const {
         quantityOf,
         setQuantity,
-        clear,
-        count,
-        cart,
         loading: cartLoading,
         error: cartLoadError,
     } = useCart();
@@ -55,7 +52,6 @@ export default function BrowsePage() {
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(
         null,
     );
-    const [previewOpen, setPreviewOpen] = useState(false);
     const [notice, setNotice] = useState<string | null>(null);
 
     const [search, setSearch] = useState<string>(""); // searchbar val
@@ -73,16 +69,6 @@ export default function BrowsePage() {
     });
 
     const cartDisabled = busy || user === undefined || cartLoading || cartLoadError !== null;
-
-    // Scroll after React has made the mobile cart preview visible.
-    useEffect(() => {
-        if (previewOpen) {
-            document.getElementById("browse-cart-preview")?.scrollIntoView({
-                behavior: "smooth",
-                block: "start",
-            });
-        }
-    }, [previewOpen]);
 
     // Both the product popup and preview use this one server-confirmed update.
     async function saveQuantity(

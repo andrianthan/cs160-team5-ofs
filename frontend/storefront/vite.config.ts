@@ -5,6 +5,11 @@ import { defineConfig } from 'vite'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  resolve: {
+    // Keep the local @ofs/shared package inside this app's dependency tree so
+    // React resolves to the same installation for the app and shared package.
+    preserveSymlinks: true,
+  },
   server: {
     port: 5173,
     proxy: {

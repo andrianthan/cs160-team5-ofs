@@ -6,7 +6,7 @@ import {
     type ReactNode,
 } from "react";
 
-import { useAuth } from "./AuthContext";
+import { useAuth } from "@ofs/shared/auth";
 
 export type CartLine = {
     productId: number;

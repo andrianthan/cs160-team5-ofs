@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Link, Navigate, useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "../AuthContext";
+import { Link, Navigate, useLocation } from "react-router-dom";
+import { useAuth } from "@ofs/shared/auth";
+import { FormError, FormField } from "@ofs/shared/components";
 
 export default function RegisterPage() {
     const { user, register } = useAuth();
@@ -44,49 +45,53 @@ export default function RegisterPage() {
                 className="bg-white border border-brand-100 rounded-3xl p-6 space-y-4 shadow-sm shadow-brand-900/5"
                 onSubmit={handleRegister}
             >
-                <div>
-                    <label htmlFor="reg-name" className="text-sm font-medium text-brand-900/80">Full name</label>
-                    <input
-                        id="reg-name" name="name" type="text" required autoComplete="name"
-                        className="mt-1 w-full border border-brand-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition" 
-                        onChange={(e) => {setName(e.target.value)}}
-                    />
-                </div>
+                <FormField
+                    id="reg-name"
+                    label="Full name"
+                    name="name"
+                    type="text"
+                    required
+                    autoComplete="name"
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                />
 
-                <div>
-                    <label htmlFor="reg-email" className="text-sm font-medium text-brand-900/80">Email</label>
-                    <input 
-                        id="reg-email" name="email" type="email" required autoComplete="email"
-                        className="mt-1 w-full border border-brand-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition"
-                        onChange={(e) => {setEmail(e.target.value)}}
-                    />
-                </div>
+                <FormField
+                    id="reg-email"
+                    label="Email"
+                    name="email"
+                    type="email"
+                    required
+                    autoComplete="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                />
 
-                <div>
-                    <label htmlFor="reg-password" className="text-sm font-medium text-brand-900/80">Password</label>
-                    <input 
-                        id="reg-password" name="password" type="password" required
-                        autoComplete="new-password" className="mt-1 w-full border border-brand-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition"
-                        onChange={(e) => {setPassword(e.target.value)}}
-                    />
-                </div>
+                <FormField
+                    id="reg-password"
+                    label="Password"
+                    name="password"
+                    type="password"
+                    required
+                    autoComplete="new-password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                />
 
-                {error && (
-                    <p id="login-error" className="text-sm text-red-600 flex items-center gap-1.5" role="alert">
-                        <i className="ph ph-warning-circle" aria-hidden="true"></i>
-                        <span>{error}</span>
-                    </p>
-                )}
+                <FormError message={error} />
 
-                <button className="w-full bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-xl py-2.5 text-sm transition-colors duration-200 cursor-pointer">
-                    Create account
+                <button
+                    disabled={busy}
+                    className="w-full bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white font-medium rounded-xl py-2.5 text-sm transition-colors duration-200 cursor-pointer"
+                >
+                    {busy ? "Creating account…" : "Create account"}
                 </button>
                
                 <p className="text-center text-sm text-brand-900/60">
                     Already have one? <span> </span>
-                    <a href="#/login" className="text-brand-700 font-medium hover:underline">
+                    <Link to="/login" className="text-brand-700 font-medium hover:underline">
                         Log in
-                    </a>
+                    </Link>
                 </p>
             </form>
         </div>

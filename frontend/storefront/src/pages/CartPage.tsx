@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 import { Link, Navigate, useNavigate, useLocation } from "react-router-dom";
 
-import { useAuth } from "../AuthContext";
+import { useAuth } from "@ofs/shared/auth";
 import { useCart } from '../CartContext';
 
 const money = new Intl.NumberFormat("en-US", {

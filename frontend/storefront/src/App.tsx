@@ -1,77 +1,45 @@
-import { useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useLocation, NavLink, type NavLinkRenderProps } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, NavLink } from "react-router-dom";
+import { AuthProvider, RequireAuth, useAuth } from "@ofs/shared/auth";
+import {
+  AccountMenu,
+  AppHeader,
+  NavPill,
+  PageStub,
+} from "@ofs/shared/components";
 
-import { AuthProvider, useAuth } from "./AuthContext";
 import { CartProvider } from "./CartContext";
-import RequireAuth from "./RequireAuth";
 
-import PageStub from "./pages/PageStub";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import BrowsePage from "./pages/BrowsePage";
 import CartPage from "./pages/CartPage";
 import CartMenu from "./components/CartMenu";
 
-// Route table from docs/part2 LLD 5 (Frontend Component Breakdown), owners from
-// docs/part2/backlog.md. Replace each PageStub with the real page as it's built.
-function ProfileMenu() {
-  const { logout } = useAuth();
-  const [open, setOpen] = useState(false);
-
-  return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen(!open)}
-        aria-label="Account menu"
-        className="w-9 h-9 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center hover:bg-brand-200"
-      >
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
-          <circle cx="12" cy="8" r="4" />
-          <path d="M4 20c0-4 3.6-6 8-6s8 2 8 6z" />
-        </svg>
-      </button>
-
-      {open && (
-        <div className="absolute right-0 mt-2 w-40 bg-white border border-brand-100 rounded-2xl shadow-lg p-1">
-          <button onClick={logout} className="w-full text-left px-3 py-2 rounded-xl text-sm hover:bg-brand-50">
-            Log out
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
 function Nav() {
   const { user } = useAuth();
   const { pathname } = useLocation();
 
-  const link = ({ isActive }: NavLinkRenderProps) =>
-    `px-3 py-2 rounded-full text-sm font-medium ${isActive ? "bg-brand-50 text-brand-700" : "text-brand-900/60"}`;
-
   return (
-    <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-brand-100">
-      <div className="relative max-w-5xl mx-auto px-4 py-3 flex flex-wrap gap-y-2 items-center justify-between">
-        <span className="font-display font-bold text-brand-700 text-lg">OFS</span>
-        <nav className="flex flex-wrap items-center gap-1" aria-label="Main navigation">
-          <NavLink to="/browse" className={link}>Browse</NavLink>
-          <CartMenu key={pathname} />
-          <NavLink to="/track" className={link}>Track</NavLink>
-          {user && <ProfileMenu />}
-          {user === null && (
-            <div className="flex gap-1">
-              <NavLink to="/login" className={link}>Sign in</NavLink>
-              <NavLink
-                to="/register"
-                className="px-3 py-2 rounded-full text-sm font-medium bg-brand-600 text-white"
-              >
-                Register
-              </NavLink>
-            </div>
-          )}
-        </nav>
-      </div>
-    </header>
+    <AppHeader
+      width="max-w-5xl"
+      brand={<NavLink to="/browse">OFS</NavLink>}
+    >
+      <NavPill to="/browse">Browse</NavPill>
+      <CartMenu key={pathname} />
+      <NavPill to="/track">Track</NavPill>
+      {user && <AccountMenu />}
+      {user === null && (
+        <div className="flex gap-1">
+          <NavPill to="/login">Sign in</NavPill>
+          <NavLink
+            to="/register"
+            className="rounded-full bg-brand-600 px-3 py-2 text-sm font-medium text-white"
+          >
+            Register
+          </NavLink>
+        </div>
+      )}
+    </AppHeader>
   );
 }
 

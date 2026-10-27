@@ -6,7 +6,7 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
-    preserveSymlinks: true,
+    dedupe: ['react', 'react-dom', 'react-router-dom'],
   },
   server: {
     port: 5174, // different port than storefront so both can run at once

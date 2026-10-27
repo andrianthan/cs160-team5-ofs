@@ -6,9 +6,7 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
-    // Keep the local @ofs/shared package inside this app's dependency tree so
-    // React resolves to the same installation for the app and shared package.
-    preserveSymlinks: true,
+    dedupe: ['react', 'react-dom', 'react-router-dom'],
   },
   server: {
     port: 5173,

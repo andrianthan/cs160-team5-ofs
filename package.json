@@ -1,0 +1,17 @@
+{
+  "name": "ofs",
+  "version": "0.0.0",
+  "private": true,
+  "workspaces": [
+    "frontend/shared",
+    "frontend/storefront",
+    "frontend/staff-dashboard"
+  ],
+  "scripts": {
+    "dev:storefront": "npm run dev -w storefront",
+    "dev:staff": "npm run dev -w staff-dashboard",
+    "build": "npm run build -w storefront && npm run build -w staff-dashboard",
+    "typecheck": "npm run typecheck -w @ofs/shared && npm run typecheck -w storefront && npm run typecheck -w staff-dashboard",
+    "lint": "npm run lint -w @ofs/shared && npm run lint -w storefront && npm run lint -w staff-dashboard"
+  }
+}

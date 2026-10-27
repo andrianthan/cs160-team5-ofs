@@ -36,6 +36,7 @@ Not yet set up, but in the Part I HLD: Apache (deployment reverse proxy), Vitest
 ```
 /frontend/storefront/       → Customer Storefront (Vite + React + Tailwind + React Router)
 /frontend/staff-dashboard/  → Staff Dashboard (Vite + React + Tailwind + React Router)
+/frontend/shared/           → Shared auth, API, form, navigation, and layout package
 /backend/                   → Flask API (app factory + blueprints, one per component group)
 /backend/app/models/        → SQLAlchemy models, see LLD for the schema
 /backend/tests/             → pytest
@@ -48,11 +49,15 @@ task — e.g. `app/blueprints/cart.py` says `T08, Than Andrian`. Check
 
 ## Getting Started
 
-**Frontend** (run each app in its own terminal):
+**Frontend** (install once from the repository root):
 ```
-cd frontend/storefront && npm install && npm run dev      # http://localhost:5173
-cd frontend/staff-dashboard && npm install && npm run dev # http://localhost:5174
+npm install
+npm run dev:storefront # http://localhost:5173
+npm run dev:staff      # http://localhost:5174, run in another terminal
 ```
+
+Use `npm run build`, `npm run typecheck`, and `npm run lint` at the root to
+check all frontend workspaces.
 
 **Backend:**
 NOTE: Python Version: 3.14.7
@@ -75,3 +80,20 @@ goes in your own local `.env` (never `.env.example`, never committed — it's gi
 
 Both frontend apps proxy `/api/*` to `localhost:5000` in dev (see each `vite.config.js`) —
 no CORS headaches locally.
+
+## Shared Frontend Package
+
+The root npm workspace automatically links both Vite apps to `@ofs/shared` in
+`frontend/shared`. The repository uses one root `package-lock.json` and one
+dependency tree. The shared package contains:
+
+- `AuthProvider`, `useAuth`, and the shared `AuthContext`
+- `RequireAuth` with optional role checks
+- the shared customer/staff login page
+- the shared API client
+- shared headers, navigation links, account menu, form fields, errors, and placeholders
+
+The storefront configures `AuthProvider` with `portal="customer"`. The staff
+dashboard uses `portal="staff"`; its operational pages accept Employee and
+Manager accounts, while Reports accepts Manager accounts only. Cart and Product
+code remains in the storefront because the staff dashboard does not use it.

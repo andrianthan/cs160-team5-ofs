@@ -3,6 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint src"
+  },
   "exports": {
     ".": "./src/index.ts",
     "./api": "./src/api/client.ts",
@@ -12,5 +16,11 @@
   "peerDependencies": {
     "react": "^19.2.8",
     "react-router-dom": "^7.18.4"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "oxlint": "^1.81.0",
+    "typescript": "~5.9.3"
   }
 }

@@ -11,7 +11,7 @@ const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD
 export default function InventoryPage() {
     const { user } = useAuth();
 
-    const { products, loading, error, update } = useProducts();
+    const { products, loading, error, update, create } = useProducts();
 
     const [search, setSearch] = useState<string>("");
 
@@ -19,6 +19,8 @@ export default function InventoryPage() {
     const [savingId, setSavingId] = useState<number | null>(null); // product being saved right now
     const [message, setMessage] = useState<string | null>(null);
     const [editingId, setEditingId] = useState<number | null>(null); // product open in the edit dialog
+    const [showCreate, setShowCreate] = useState(false); // is the "new product" dialog open
+    const [savingNew, setSavingNew] = useState(false);
 
     // create categories dynamically
     const categories = ["All", ...new Set(products.map((p) => p.category))];
@@ -69,6 +71,16 @@ export default function InventoryPage() {
 
     }
 
+    // create a new product. returns an error message, or null when it worked.
+    // the hook adds the server's version to the list
+    const createNewProduct = async (input: ProductInput): Promise<string | null> => {
+        setMessage(null);
+        setSavingNew(true);
+        const result = await create(input);
+        setSavingNew(false);
+        return result.ok ? null : `Could not create product: ${result.data.message}`;
+    };
+
     return (
         <main className="max-w-5xl mx-auto px-4 py-6">
             <h1 className="font-display text-2xl font-bold mb-4">Inventory</h1>
@@ -85,14 +97,30 @@ export default function InventoryPage() {
                 />
 
                 {isManager && (
-                    <button
-                        type="button"
-                        onClick={deactivateOutOfStock}
-                        disabled={savingId !== null || outOfStock.length === 0}
-                        className="px-3 py-1.5 my-2 rounded-full text-sm font-medium cursor-pointer bg-brand-50 text-brand-700 hover:bg-brand-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        Set out-of-stock products inactive ({outOfStock.length})
-                    </button>
+                    <div>
+                        {/** auto inactive */}
+                        <button
+                            type="button"
+                            onClick={deactivateOutOfStock}
+                            disabled={savingId !== null || outOfStock.length === 0}
+                            className="px-3 py-1.5 my-2 rounded-full text-sm font-medium cursor-pointer bg-brand-50 text-brand-700 hover:bg-brand-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Set out-of-stock products inactive ({outOfStock.length})
+                        </button>
+
+                        {/** create product */}
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setMessage(null);
+                                setShowCreate(true);
+                            }}
+                            className="ml-2 px-3 py-1.5 my-2 rounded-full text-sm font-medium cursor-pointer bg-brand-600 text-white hover:bg-brand-700"
+                        >
+                            Create New Product
+                        </button>
+                    </div>
+
                 )}
 
             </div>
@@ -175,6 +203,16 @@ export default function InventoryPage() {
                     onClose={() => setEditingId(null)}
                 />
             )}
+
+            {/** new product dialog (managers only) */}
+            {isManager && showCreate && (
+                <CreateProductDialog
+                    categories={categories.filter((c) => c !== "All")}
+                    saving={savingNew}
+                    onSave={createNewProduct}
+                    onClose={() => setShowCreate(false)}
+                />
+            )}
         </main>
     );
 }
@@ -193,8 +231,7 @@ function ProductRow({ product, managerControls, saving, onSave, onOpen }: Produc
             className={
                 `flex items-center justify-between gap-4 border-b border-brand-100 py-3 
                 ${product.active ? "" : "opacity-50 bg-brand-50/50"}
-                ${product.stock <= 10 ? "text-orange-500" : ""}
-                ${product.stock <= 0 ? "text-red-500" : ""}`
+                ${product.stock <= 0 ? "text-red-500" : product.stock <= 10 ? "text-orange-500" : ""}`
             }
         >
             <div className="min-w-0">
@@ -428,7 +465,7 @@ function EditProductDialog({ product, saving, onSave, onClose }: EditProductDial
                         <span className="font-medium">Available to customers</span>
                         {!available && (
                             <span className="block text-xs text-brand-900/60">
-                                Saving will hide this product from the storefront and from this list.
+                                Customers won't see this product.
                             </span>
                         )}
                     </span>
@@ -455,6 +492,221 @@ function EditProductDialog({ product, saving, onSave, onClose }: EditProductDial
                         className="px-4 py-2 rounded-full text-sm font-medium bg-brand-600 hover:bg-brand-700 text-white disabled:opacity-50 cursor-pointer transition-colors duration-200"
                     >
                         {saving ? "Saving…" : "Save"}
+                    </button>
+                </div>
+            </form>
+        </div>
+    );
+}
+
+type CreateProductDialogProps = {
+    categories: string[]; // existing categories, offered as suggestions
+    saving: boolean;
+    onSave: (input: ProductInput) => Promise<string | null>; // error message, or null on success
+    onClose: () => void;
+};
+
+// A form for a new product. Everything is typed as text and checked when you press Save.
+function CreateProductDialog({ categories, saving, onSave, onClose }: CreateProductDialogProps) {
+    const [form, setForm] = useState({
+        name: "",
+        category: "",
+        description: "",
+        price: "",
+        weightLb: "",
+        stock: "0",
+        lowStockThreshold: "5",
+        active: true,
+    });
+    const [problem, setProblem] = useState<string | null>(null);
+
+    // one helper instead of a separate onChange per field
+    const set = (field: keyof typeof form, value: string | boolean) =>
+        setForm((prev) => ({ ...prev, [field]: value }));
+
+    // Escape closes the dialog
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === "Escape" && !saving) onClose();
+        };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, [saving, onClose]);
+
+    const submit = async (e: React.FormEvent) => {
+        e.preventDefault(); // without this the browser reloads the page
+        setProblem(null);
+
+        // check each field, same rules as the server
+        const name = form.name.trim();
+        if (name === "") return setProblem("Name is required.");
+        if (name.length > 160) return setProblem("Name must be 160 characters or fewer.");
+
+        const category = form.category.trim();
+        if (category === "") return setProblem("Category is required.");
+        if (category.length > 80) return setProblem("Category must be 80 characters or fewer.");
+
+        if (!/^\d+(\.\d{1,2})?$/.test(form.price.trim())) {
+            return setProblem("Price must be a number with at most 2 decimals, like 4.50.");
+        }
+
+        const weightLb = Number(form.weightLb);
+        if (form.weightLb.trim() === "" || !Number.isFinite(weightLb) || weightLb <= 0) {
+            return setProblem("Weight must be a number greater than 0.");
+        }
+
+        if (!/^\d+$/.test(form.stock.trim())) return setProblem("Stock must be a whole number.");
+        if (!/^\d+$/.test(form.lowStockThreshold.trim())) {
+            return setProblem("Low-stock alert must be a whole number.");
+        }
+
+        const description = form.description.trim();
+        const error = await onSave({
+            name,
+            category,
+            description: description === "" ? null : description,
+            price: Number(form.price),
+            weightLb,
+            stock: Number(form.stock),
+            lowStockThreshold: Number(form.lowStockThreshold),
+            imageUrl: null,
+            active: form.active,
+        });
+        if (error) setProblem(error); // stay open so nothing typed is lost
+        else onClose();
+    };
+
+    return (
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onMouseDown={(e) => {
+                // a click on the dark backdrop (not the card) closes it
+                if (e.target === e.currentTarget && !saving) onClose();
+            }}
+        >
+            <form
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="create-product-title"
+                onSubmit={submit}
+                className="w-full max-w-md max-h-full overflow-y-auto bg-white rounded-3xl p-6 flex flex-col gap-4 shadow-xl"
+            >
+                <h2 id="create-product-title" className="font-display text-xl font-bold">
+                    New product
+                </h2>
+
+                <label className="flex flex-col gap-1 text-sm font-medium">
+                    Name
+                    <input
+                        autoFocus
+                        value={form.name}
+                        onChange={(e) => set("name", e.target.value)}
+                        disabled={saving}
+                        className={inputClass}
+                    />
+                </label>
+
+                <label className="flex flex-col gap-1 text-sm font-medium">
+                    Category
+                    <input
+                        list="category-suggestions"
+                        value={form.category}
+                        onChange={(e) => set("category", e.target.value)}
+                        disabled={saving}
+                        className={inputClass}
+                    />
+                    <datalist id="category-suggestions">
+                        {categories.map((c) => (
+                            <option key={c} value={c} />
+                        ))}
+                    </datalist>
+                </label>
+
+                <label className="flex flex-col gap-1 text-sm font-medium">
+                    Description
+                    <textarea
+                        value={form.description}
+                        onChange={(e) => set("description", e.target.value)}
+                        disabled={saving}
+                        rows={3}
+                        className={inputClass}
+                    />
+                </label>
+
+                <div className="grid grid-cols-2 gap-4">
+                    <label className="flex flex-col gap-1 text-sm font-medium">
+                        Price ($)
+                        <input
+                            inputMode="decimal"
+                            value={form.price}
+                            onChange={(e) => set("price", e.target.value)}
+                            disabled={saving}
+                            className={inputClass}
+                        />
+                    </label>
+                    <label className="flex flex-col gap-1 text-sm font-medium">
+                        Weight (lb)
+                        <input
+                            inputMode="decimal"
+                            value={form.weightLb}
+                            onChange={(e) => set("weightLb", e.target.value)}
+                            disabled={saving}
+                            className={inputClass}
+                        />
+                    </label>
+                    <label className="flex flex-col gap-1 text-sm font-medium">
+                        Stock
+                        <input
+                            inputMode="numeric"
+                            value={form.stock}
+                            onChange={(e) => set("stock", e.target.value)}
+                            disabled={saving}
+                            className={inputClass}
+                        />
+                    </label>
+                    <label className="flex flex-col gap-1 text-sm font-medium">
+                        Low-stock alert at
+                        <input
+                            inputMode="numeric"
+                            value={form.lowStockThreshold}
+                            onChange={(e) => set("lowStockThreshold", e.target.value)}
+                            disabled={saving}
+                            className={inputClass}
+                        />
+                    </label>
+                </div>
+
+                <label className="flex items-center gap-2 text-sm">
+                    <input
+                        type="checkbox"
+                        checked={form.active}
+                        onChange={(e) => set("active", e.target.checked)}
+                        disabled={saving}
+                    />
+                    <span className="font-medium">Available to customers</span>
+                </label>
+
+                {problem && (
+                    <p role="alert" className="text-sm text-red-600">
+                        {problem}
+                    </p>
+                )}
+
+                <div className="flex justify-end gap-2">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        disabled={saving}
+                        className="px-4 py-2 rounded-full text-sm font-medium bg-brand-50 text-brand-700 hover:bg-brand-100 disabled:opacity-50 cursor-pointer transition-colors duration-200"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="submit"
+                        disabled={saving}
+                        className="px-4 py-2 rounded-full text-sm font-medium bg-brand-600 hover:bg-brand-700 text-white disabled:opacity-50 cursor-pointer transition-colors duration-200"
+                    >
+                        {saving ? "Saving…" : "Create"}
                     </button>
                 </div>
             </form>

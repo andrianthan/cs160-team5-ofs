@@ -251,6 +251,7 @@ function EditProductDialog({ product, saving, onSave, onClose }: EditProductDial
     const [description, setDescription] = useState(product.description ?? "");
     const [price, setPrice] = useState(product.price.toFixed(2));
     const [weight, setWeight] = useState(String(product.weightLb));
+    const [category, setCategory] = useState<string>(String(product.category));
     const [available, setAvailable] = useState(product.active);
     const [problem, setProblem] = useState<string | null>(null);
 
@@ -288,6 +289,10 @@ function EditProductDialog({ product, saving, onSave, onClose }: EditProductDial
         const cleanDescription = description.trim();
         if (cleanDescription !== (product.description ?? "")) {
             changes.description = cleanDescription === "" ? null : cleanDescription;
+        }
+        const cleanCategory = category.trim()
+        if (cleanCategory !== (product.category)) {
+            changes.category = cleanCategory;
         }
         if (newPrice !== product.price) changes.price = newPrice;
         if (newWeight !== product.weightLb) changes.weightLb = newWeight;
@@ -363,6 +368,16 @@ function EditProductDialog({ product, saving, onSave, onClose }: EditProductDial
                         />
                     </label>
                 </div>
+
+                <label className="flex flex-col gap-1 text-sm font-medium">
+                    Category
+                    <input
+                        value={category}
+                        onChange={(e) => setCategory(e.target.value)}
+                        disabled={saving}
+                        className={inputClass}
+                    />
+                </label>
 
                 <label className="flex items-start gap-2 text-sm">
                     <input

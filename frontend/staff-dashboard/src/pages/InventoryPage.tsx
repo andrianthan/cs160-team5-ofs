@@ -55,19 +55,48 @@ export default function InventoryPage() {
         setMessage(await send(product, changes));
     };
 
+    // set out of stock items as inactive
+    const outOfStock = products.filter((p) => p.active && p.stock <= 0);
+    const deactivateOutOfStock = async () => {
+        setMessage(null);
+
+        for (const prod of outOfStock) {
+            const error = await send(prod, { active: false });
+            if (error) {
+                return setMessage(error);
+            }
+        }
+
+    }
+
     return (
         <main className="max-w-5xl mx-auto px-4 py-6">
             <h1 className="font-display text-2xl font-bold mb-4">Inventory</h1>
 
-            {/** search bar */}
-            <input
-                type="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search products"
-                aria-label="Search products"
-                className="w-full sm:w-72 mb-4 border border-brand-200 rounded-full px-4 py-2 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition"
-            />
+            <div className="flex justify-between">
+                {/** search bar */}
+                <input
+                    type="search"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search products"
+                    aria-label="Search products"
+                    className="w-full sm:w-72 mb-4 border border-brand-200 rounded-full px-4 py-2 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition"
+                />
+
+                {isManager && (
+                    <button
+                        type="button"
+                        onClick={deactivateOutOfStock}
+                        disabled={savingId !== null || outOfStock.length === 0}
+                        className="px-3 py-1.5 my-2 rounded-full text-sm font-medium cursor-pointer bg-brand-50 text-brand-700 hover:bg-brand-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        Set out-of-stock products inactive ({outOfStock.length})
+                    </button>
+                )}
+
+            </div>
+
 
             {/** filter by category */}
             {categories.length > 2 && (

@@ -242,7 +242,12 @@ function ProductTile({ product, quantityInCart = 0, disabled, onAdd, onOpen }: P
     const outOfStock: boolean = product.stock <= 0;
 
     return (
-        <div className="bg-white border border-brand-100 rounded-3xl p-4 flex flex-col gap-2 hover:shadow-md hover:shadow-brand-900/5 transition-shadow duration-200">
+        <div className={
+            `bg-white border border-brand-100 rounded-3xl p-4 flex flex-col gap-2 
+            hover:shadow-md hover:shadow-brand-900/5 transition-shadow duration-200
+            ${product.stock <= 0 ? "opacity-50 bg-brand-50/50" : ""}`
+        }
+        >
             <button
                 type="button"
                 onClick={onOpen}

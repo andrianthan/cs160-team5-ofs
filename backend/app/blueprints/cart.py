@@ -131,16 +131,18 @@ def update_cart_item(product_id):
     if not isinstance(quantity, int) or isinstance(quantity, bool) or not 0 <= quantity <= MAX_QUANTITY:
         return _error("invalid_quantity", f"Quantity must be a whole number from 0 to {MAX_QUANTITY}.", 400)
 
-    product = db.session.get(Product, int(product_id)) if product_id.isdigit() else None
-    if product is None or not product.active:
+    product = db.session.get(Product, int(product_id)) if product_id.isascii() and product_id.isdigit() else None
+    if product is None:
         return _error("product_not_found", "That product is not available.", 404)
 
     cart = _get_cart(current_user)
     line = CartLine.query.filter_by(cart_id=cart.id, product_id=product.product_id).first()
 
-    if quantity == 0:
+    if quantity == 0:  # removing is always allowed, even if the product has since been deactivated
         if line:
             db.session.delete(line)
+    elif not product.active:
+        return _error("product_not_found", "That product is not available.", 404)
     else:
         if quantity > product.stock_qty:  # BR-4
             return _error("insufficient_stock", f"Only {product.stock_qty} in stock.", 409)

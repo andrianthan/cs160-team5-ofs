@@ -27,8 +27,9 @@ export default function InventoryPage() {
         const matchesSearch = product.name
             .toLowerCase()
             .includes(search.trim().toLowerCase());
-        const matchesCategory =
-            category === "All" || product.category === category;
+
+        const matchesCategory = category === "All" || product.category === category;
+
         return matchesSearch && matchesCategory;
     });
 

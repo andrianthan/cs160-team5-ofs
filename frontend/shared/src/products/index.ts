@@ -1,2 +1,2 @@
-export { listProducts } from "./api";
+export { listProducts, listAllProducts } from "./api";
 export type { Product } from "./types";

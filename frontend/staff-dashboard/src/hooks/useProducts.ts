@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { listProducts, type Product } from "@ofs/shared/products";
+import { listAllProducts, type Product } from "@ofs/shared/products";
 
 import { createProduct, updateProduct, type ProductInput } from "../api/products";
 
@@ -14,7 +14,7 @@ export function useProducts() {
     const [error, setError] = useState<string | null>(null);
 
     const refresh = useCallback(async () => {
-        const result = await listProducts();
+        const result = await listAllProducts();
 
         if (result.ok) {
             setProducts(result.data);
@@ -35,7 +35,7 @@ export function useProducts() {
     const create = async (input: ProductInput) => {
         const result = await createProduct(input);
 
-        if (result.ok && result.data.active) {
+        if (result.ok) {
             setProducts((list) => [...list, result.data].sort(byName));
         }
         return result;
@@ -45,11 +45,7 @@ export function useProducts() {
         const result = await updateProduct(id, changes);
 
         if (result.ok) {
-            setProducts((list) =>
-                result.data.active
-                    ? list.map((p) => (p.id === id ? result.data : p)).sort(byName)
-                    : list.filter((p) => p.id !== id),
-            );
+            setProducts((list) => list.map((p) => (p.id === id ? result.data : p)).sort(byName));
         }
         return result;
     };

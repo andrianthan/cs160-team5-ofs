@@ -50,6 +50,12 @@ def list_products():
 
     return jsonify([p.to_dict() for p in products])
 
+@bp.get("/all")
+@staff_required
+def get_all():
+    products = Product.query.order_by(Product.name).all()
+
+    return jsonify([p.to_dict() for p in products])
 
 @bp.patch("/<int:product_id>")
 @manager_required

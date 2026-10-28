@@ -160,7 +160,14 @@ type ProductRowProps = {
 
 function ProductRow({ product, managerControls, saving, onSave, onOpen }: ProductRowProps) {
     return (
-        <div className="flex items-center justify-between gap-4 border-b border-brand-100 py-3">
+        <div
+            className={
+                `flex items-center justify-between gap-4 border-b border-brand-100 py-3 
+                ${product.active ? "" : "opacity-50 bg-brand-50/50"}
+                ${product.stock <= 10 ? "text-orange-500" : ""}
+                ${product.stock <= 0 ? "text-red-500" : ""}`
+            }
+        >
             <div className="min-w-0">
                 {managerControls ? (
                     // the name is the button that opens the edit dialog

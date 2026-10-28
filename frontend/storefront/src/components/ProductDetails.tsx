@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { CartResult } from "../CartContext";
-import type { Product } from "../pages/BrowsePage";
+import type { Product } from "@ofs/shared/products";
 
 type ProductDetailsProps = {
     product: Product;

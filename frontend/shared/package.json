@@ -11,7 +11,8 @@
     ".": "./src/index.ts",
     "./api": "./src/api/client.ts",
     "./auth": "./src/auth/index.ts",
-    "./components": "./src/components/index.ts"
+    "./components": "./src/components/index.ts",
+    "./products": "./src/products/index.ts"
   },
   "peerDependencies": {
     "react": "^19.2.8",

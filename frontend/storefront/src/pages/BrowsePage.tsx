@@ -4,19 +4,8 @@ import { Link, useNavigate } from "react-router-dom";
 import ProductDetails from "../components/ProductDetails";
 
 import { useAuth } from "@ofs/shared/auth";
+import { listProducts, type Product } from "@ofs/shared/products";
 import { useCart, type CartResult } from "../CartContext";
-
-// what GET /api/products gives u for each product
-export type Product = {
-    id: number;
-    name: string;
-    category: string;
-    description: string | null;
-    price: number;
-    weightLb: number;
-    stock: number;
-    imageUrl: string | null;
-};
 
 // load products
 function useProducts() {
@@ -26,11 +15,14 @@ function useProducts() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        fetch("/api/products")
-            .then((res) => (res.ok ? (res.json() as Promise<Product[]>) : Promise.reject()))
-            .then(setProducts)
-            .catch(() => setError("Could not load products. Check that the backend is running."))
-            .finally(() => setLoading(false));
+        listProducts().then((result) => {
+            if (result.ok) {
+                setProducts(result.data);
+            } else {
+                setError("Could not load products. Check that the backend is running.");
+            }
+            setLoading(false);
+        });
     }, []);
 
     return { products, loading, error };

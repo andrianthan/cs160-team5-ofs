@@ -60,6 +60,7 @@ def update_product(product_id):
         return jsonify(error="Product not found"), 404
 
     values, error = _clean(_body(), creating=False)
+    print(values, error)
     if error:
         return jsonify(error=error), 400
 

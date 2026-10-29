@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { listAllProducts, type Product } from "@ofs/shared/products";
 
-import { createProduct, updateProduct, type ProductInput } from "../api/products";
+import { createProduct, updateProduct, deleteProduct, type ProductInput } from "../api/products";
 
 const byName = (a: Product, b: Product) => a.name.localeCompare(b.name);
 
@@ -50,7 +50,17 @@ export function useProducts() {
         return result;
     };
 
+    const del = async (id: number) => {
+        const result = await deleteProduct(id);
+
+        if (result.ok) {
+            setProducts((list) => list.filter((p) => p.id !== id));
+        }
+
+        return result;
+    };
+
     const deactivate = (id: number) => update(id, { active: false });
 
-    return { products, loading, error, refresh, create, update, deactivate };
+    return { products, loading, error, refresh, create, update, deactivate, del };
 }

@@ -67,5 +67,10 @@ export async function updateProduct(id: number, changes: Partial<ProductInput>) 
     return friendly(await apiRequest<Product>(`${PRODUCTS_URL}/${id}`, jsonRequest("PATCH", toRequestBody(changes))));
 }
 
-// There is no DELETE: "removing" a product means making it inactive.
+// hide the product from shoppers but keep it for order history.
 export const deactivateProduct = (id: number) => updateProduct(id, { active: false });
+
+// Managers only. Permanent deletion. the server refuses (409) if the product is still referenced.
+export async function deleteProduct(id: number) {
+    return friendly(await apiRequest<Product>(`${PRODUCTS_URL}/${id}`, jsonRequest("DELETE")));
+}

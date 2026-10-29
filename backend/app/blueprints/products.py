@@ -1,7 +1,9 @@
 # T05 — Catalog and Inventory backend. Owner: Karnani Shresthkumar.
+from sqlalchemy.exc import IntegrityError
 from flask import Blueprint, jsonify, request
 from ..extensions import db
 from ..models.product import Product, REQUIRED, OPTIONAL
+from ..models.cart import CartLine
 from .auth import staff_required, manager_required
 
 bp = Blueprint("products", __name__, url_prefix="/api/products")
@@ -74,6 +76,30 @@ def update_product(product_id):
         setattr(product, column, value)
     db.session.commit()
     return jsonify(product.to_dict())
+
+
+@bp.delete("/<int:product_id>")
+@manager_required
+def delete_product(product_id):
+    product = db.session.get(Product, product_id)
+
+    if product is None:
+        return jsonify(error="Product not found"), 404
+
+    if CartLine.query.filter_by(product_id=product_id).first():
+        return jsonify(error="Product is in a cart. Deactivate it instead."), 409
+    # TODO: do the same for order lines once they exist
+
+    data = product.to_dict()
+
+    try:
+        db.session.delete(product)
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify(error="Product is still referenced elsewhere. Deactivate it instead."), 409
+
+    return jsonify(data)
 
 
 @bp.post("")

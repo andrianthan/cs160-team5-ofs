@@ -11,7 +11,7 @@ const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD
 export default function InventoryPage() {
     const { user } = useAuth();
 
-    const { products, loading, error, update, create } = useProducts();
+    const { products, loading, error, update, create, del } = useProducts();
 
     const [search, setSearch] = useState<string>("");
 
@@ -79,6 +79,17 @@ export default function InventoryPage() {
         const result = await create(input);
         setSavingNew(false);
         return result.ok ? null : `Could not create product: ${result.data.message}`;
+    };
+
+    // delete product
+    const handleDelete = async (product: Product) => {
+        if (!window.confirm(`Delete ${product.name}? This cannot be undone.`)) return;
+
+        setMessage(null);
+
+        const result = await del(product.id);
+
+        if (!result.ok) setMessage(`Could not delete product: ${result.data.message}`);
     };
 
     return (
@@ -189,6 +200,7 @@ export default function InventoryPage() {
                             setMessage(null);
                             setEditingId(product.id);
                         }}
+                        onDelete={handleDelete}
                     />
                 ))}
             </div>
@@ -223,9 +235,10 @@ type ProductRowProps = {
     saving: boolean;
     onSave: (product: Product, changes: Partial<ProductInput>) => void;
     onOpen: () => void;
+    onDelete: (product: Product) => void;
 };
 
-function ProductRow({ product, managerControls, saving, onSave, onOpen }: ProductRowProps) {
+function ProductRow({ product, managerControls, saving, onSave, onOpen, onDelete }: ProductRowProps) {
     return (
         <div
             className={
@@ -301,6 +314,35 @@ function ProductRow({ product, managerControls, saving, onSave, onOpen }: Produc
                             +
                         </button>
                     </div>
+
+                    {/** delete product */}
+                    <button
+                        type="button"
+                        disabled={saving}
+                        aria-label={`Delete ${product.name}`}
+                        title="Delete product"
+                        className="w-8 h-8 flex items-center justify-center rounded-lg border border-brand-200 text-brand-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors duration-200"
+                        onClick={() => { onDelete(product) }}
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            width="16"
+                            height="16"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden="true"
+                        >
+                            <path d="M3 6h18" />
+                            <path d="M8 6V4h8v2" />
+                            <path d="M19 6l-1 14H6L5 6" />
+                            <path d="M10 11v6M14 11v6" />
+                        </svg>
+
+                    </button>
                 </div>
             )}
         </div>

@@ -66,9 +66,11 @@ cd backend
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env   # fill in DATABASE_URL, STRIPE_*, MAPBOX_*, SMTP_* as you need them
-python run.py           # http://localhost:5000, GET /api/health to check it's up
+python run.py           # http://localhost:5000, GET /api/health to check it's up (loads .env itself)
 pytest                  # run the test suite
 ```
+Already have a `.venv`? Re-run `pip install -r requirements.txt` after pulling. SQLAlchemy is
+pinned to 2.0.x because 2.1 looks for the `psycopg` driver instead of our `psycopg2`.
 
 **DB (Supabase):** one shared Supabase project for the whole team — don't each spin up your own.
 Whoever has it (currently: T02 owner) posts the connection string in the team chat, not committed
@@ -77,6 +79,19 @@ anywhere. Project Settings → Database → Connection string → URI, then:
 DATABASE_URL=postgresql://postgres:[YOUR-PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres
 ```
 goes in your own local `.env` (never `.env.example`, never committed — it's gitignored already).
+
+**Payments (Stripe test mode):** free, no card needed. Sign up at dashboard.stripe.com, stay in
+test mode / sandbox, then Developers → API keys → copy the `sk_test_...` secret key into
+`STRIPE_SECRET_KEY`. The webhook secret comes from the [Stripe CLI](https://github.com/stripe/stripe-cli/releases),
+which forwards Stripe's events to your local backend. Keep it running in its own terminal while testing payments:
+```
+stripe login
+stripe listen --print-secret   # put this whsec_... in STRIPE_WEBHOOK_SECRET (it's per machine)
+stripe listen --events payment_intent.succeeded,payment_intent.payment_failed,payment_intent.canceled \
+  --forward-to localhost:5000/api/payments/webhook
+```
+Without `stripe listen` running, payments stay `pending` forever. Test card: `4242 4242 4242 4242`,
+any future expiry, any CVC.
 
 Both frontend apps proxy `/api/*` to `localhost:5000` in dev (see each `vite.config.js`) —
 no CORS headaches locally.

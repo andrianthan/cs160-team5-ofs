@@ -3,6 +3,8 @@ from datetime import datetime, timezone
 from ..extensions import db
 
 PENDING, SUCCEEDED, FAILED, CANCELED = "pending", "succeeded", "failed", "canceled"
+# Paid, but the Order could not be placed (stock ran out or the cart changed mid-payment).
+REFUNDED = "refunded"
 
 
 def _now():
@@ -20,7 +22,13 @@ class Payment(db.Model):
     currency = db.Column(db.String(3), nullable=False, default="usd")
     status = db.Column(db.String(20), nullable=False, default=PENDING)
     failure_reason = db.Column(db.Text)
-    # Filled by T12 once the Order exists. Plain integer on purpose: orders table is T02/T12's.
+    # Validated delivery address, carried from checkout to the Order the webhook creates.
+    delivery_address = db.Column(db.Text)
+    delivery_lat = db.Column(db.Float)
+    delivery_lng = db.Column(db.Float)
+    # Set by the webhook once the Order exists. Plain integer on purpose: orders table is T02/T12's.
     order_id = db.Column(db.Integer)
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=_now)
     updated_at = db.Column(db.DateTime(timezone=True), nullable=False, default=_now, onupdate=_now)
+
+    user = db.relationship("User")

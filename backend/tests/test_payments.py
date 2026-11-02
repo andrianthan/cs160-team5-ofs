@@ -5,15 +5,18 @@ import stripe
 
 from app.blueprints import payments as pay
 from app.extensions import db
-from app.models import Payment, Product, User
+from app.models import Cart, Order, Payment, Product, User
 
 KEY = "key-12345678"
+ADDRESS = "150 S 1st St, San Jose"
+DOWNTOWN = {"lat": 37.333, "lng": -121.889, "place_name": "150 S 1st St, San Jose, CA 95113"}
 
 
 @pytest.fixture(autouse=True)
-def stripe_config(app):
+def stripe_config(app, monkeypatch):
     app.config["STRIPE_SECRET_KEY"] = "sk_test_x"
     app.config["STRIPE_WEBHOOK_SECRET"] = "whsec_x"
+    monkeypatch.setattr(pay, "geocode", lambda address: DOWNTOWN)
 
 
 @pytest.fixture
@@ -26,6 +29,7 @@ def calls(monkeypatch):
 
     monkeypatch.setattr(pay, "create_payment_intent", fake_create)
     monkeypatch.setattr(pay, "cancel_payment_intent", lambda intent_id: log.append(("cancel", intent_id)))
+    monkeypatch.setattr(pay, "refund_payment_intent", lambda intent_id, key: log.append(("refund", intent_id, key)))
     return log
 
 
@@ -46,8 +50,8 @@ def fill_cart(client, price="10.00", weight="10.00", qty=1, stock=100):
     return p
 
 
-def start(client, key=KEY):
-    return client.post("/api/payments", json={"idempotencyKey": key})
+def start(client, key=KEY, address=ADDRESS):
+    return client.post("/api/payments", json={"idempotencyKey": key, "address": address})
 
 
 def event(monkeypatch, kind, intent_id="pi_1", message=None):
@@ -72,7 +76,7 @@ def test_requires_login(client):
 @pytest.mark.parametrize("key", [None, "", "short", "x" * 65, 12345678])
 def test_invalid_key(client, calls, key):
     sign_in(client)
-    resp = client.post("/api/payments", json={"idempotencyKey": key})
+    resp = client.post("/api/payments", json={"idempotencyKey": key, "address": ADDRESS})
     assert resp.status_code == 400 and not calls
 
 
@@ -236,3 +240,123 @@ def test_cannot_cancel_succeeded(client, calls, monkeypatch):
     hook(client)
     pid = Payment.query.one().id
     assert client.post(f"/api/payments/{pid}/cancel").get_json()["error"] == "not_cancelable"
+
+
+# ============ address at checkout ============
+
+@pytest.mark.parametrize("address", [None, "", "   ", "x" * 301])
+def test_address_required(client, calls, address):
+    sign_in(client)
+    fill_cart(client)
+    resp = start(client, address=address)
+    assert resp.status_code == 400 and resp.get_json()["error"] == "invalid_address" and not calls
+
+
+def test_address_not_found(client, calls, monkeypatch):
+    monkeypatch.setattr(pay, "geocode", lambda address: None)
+    sign_in(client)
+    fill_cart(client)
+    assert start(client).status_code == 404 and not calls
+
+
+def test_address_outside_zone(client, calls, monkeypatch):
+    monkeypatch.setattr(pay, "geocode", lambda address: {"lat": 37.77, "lng": -122.42, "place_name": "SF"})
+    sign_in(client)
+    fill_cart(client)
+    resp = start(client)
+    assert resp.status_code == 422 and resp.get_json()["error"] == "OUTSIDE_DELIVERY_ZONE" and not calls
+
+
+# ============ webhook -> Order ============
+
+def test_success_places_order(client, calls, monkeypatch):
+    sign_in(client)
+    p = fill_cart(client, price="10.00", weight="10.00", qty=2, stock=5)
+    start(client)
+    event(monkeypatch, "payment_intent.succeeded")
+    hook(client)
+
+    order = Order.query.one()
+    assert order.status == "placed" and float(order.total) == 30.0 and float(order.delivery_fee) == 10.0
+    assert order.delivery_address == DOWNTOWN["place_name"] and order.delivery_lat == DOWNTOWN["lat"]
+    assert [(l.product_id, l.name, float(l.unit_price), l.quantity) for l in order.lines] == [
+        (p.product_id, "Thing", 10.0, 2)
+    ]
+    assert db.session.get(Product, p.product_id).stock_qty == 3
+    assert Cart.query.one().lines == []
+    assert client.get(f"/api/payments/{Payment.query.one().id}").get_json()["orderId"] == order.id
+
+
+def test_replayed_success_places_one_order(client, calls, monkeypatch):
+    sign_in(client)
+    p = fill_cart(client, stock=5)
+    start(client)
+    event(monkeypatch, "payment_intent.succeeded")
+    hook(client)
+    hook(client)
+    assert Order.query.count() == 1 and db.session.get(Product, p.product_id).stock_qty == 4
+
+
+def test_order_keeps_price_snapshot(client, calls, monkeypatch):
+    sign_in(client)
+    p = fill_cart(client, price="10.00")
+    start(client)
+    event(monkeypatch, "payment_intent.succeeded")
+    hook(client)
+    p.price = Decimal("99.00")
+    db.session.commit()
+    assert float(Order.query.one().lines[0].unit_price) == 10.0
+
+
+def test_sold_out_mid_payment_refunds(client, calls, monkeypatch):
+    sign_in(client)
+    p = fill_cart(client, qty=2, stock=2)
+    start(client)
+    p.stock_qty = 1  # someone else bought one while this customer was paying
+    db.session.commit()
+    event(monkeypatch, "payment_intent.succeeded")
+    assert hook(client).status_code == 200
+
+    payment = Payment.query.one()
+    assert payment.status == "refunded" and "sold out" in payment.failure_reason
+    assert ("refund", "pi_1", f"refund-{payment.id}") in calls
+    assert Order.query.count() == 0 and db.session.get(Product, p.product_id).stock_qty == 1
+    assert len(Cart.query.one().lines) == 1  # nothing bought, cart left alone
+
+
+def test_cart_changed_mid_payment_refunds(client, calls, monkeypatch):
+    sign_in(client)
+    p = fill_cart(client, qty=1)
+    start(client)
+    client.put(f"/api/cart/items/{p.product_id}", json={"quantity": 3})
+    event(monkeypatch, "payment_intent.succeeded")
+    hook(client)
+    assert Payment.query.one().status == "refunded" and Order.query.count() == 0
+
+
+def test_refund_error_lets_stripe_retry(client, calls, monkeypatch):
+    def boom(*a, **k):
+        raise stripe.error.APIConnectionError("down")
+
+    sign_in(client)
+    p = fill_cart(client, qty=2, stock=2)
+    start(client)
+    p.stock_qty = 0
+    db.session.commit()
+    monkeypatch.setattr(pay, "refund_payment_intent", boom)
+    event(monkeypatch, "payment_intent.succeeded")
+    assert hook(client).status_code == 500
+    assert Payment.query.one().status == "pending"
+
+
+def test_refunded_not_downgraded(client, calls, monkeypatch):
+    sign_in(client)
+    p = fill_cart(client, qty=1, stock=1)
+    start(client)
+    p.stock_qty = 0
+    db.session.commit()
+    event(monkeypatch, "payment_intent.succeeded")
+    hook(client)
+    event(monkeypatch, "payment_intent.payment_failed", message="late")
+    hook(client)
+    assert Payment.query.one().status == "refunded"

@@ -14,6 +14,7 @@ import RegisterPage from "./pages/RegisterPage";
 import BrowsePage from "./pages/BrowsePage";
 import CartPage from "./pages/CartPage";
 import CartMenu from "./components/CartMenu";
+import CheckOutPage from "./pages/CheckOutPage";
 
 function Nav() {
   const { user } = useAuth();
@@ -71,7 +72,7 @@ export default function App() {
               path="/checkout"
               element={
                 <RequireAuth>
-                  <PageStub title="Checkout" task="T08 / T10 / T11" owner="Andrian" />
+                  <CheckOutPage />
                 </RequireAuth>
               }
             />

@@ -13,13 +13,20 @@ bp = Blueprint("trips", __name__, url_prefix="/api/trips")
 class Order:
     def __init__(self, address, weight, time):
         self.id = uuid.uuid4()
-        self.address = address #mapbox location
+        self.address = address #mapbox location; should probably refactor to location
         self.weight = weight #pounds
         self.time = time #datetime
+
+# PLACEHOLDER TRIP OBJECT
+class Trip:
+    def __init__(self, triplist):
+        self.id = uuid.uuid4()
+        self.triplist = triplist #list of destinations from list_trips()
 
 MAX_ORDERS = 10
 MAX_WEIGHT = 200.0
 order_queue = [] #placeholder, orders added in order of time
+trip_dictionary = {} #placeholder, meant to store trip objects
 
 @bp.get("")
 def list_trips():
@@ -39,7 +46,7 @@ def list_trips():
         current_app.logger.warning("MAPBOX_ACCESS_TOKEN not set — directions disabled")
         return None
 
-    profile = "walking" #seems to be most appropriate profile - adjust if needed
+    profile = "driving" # walking also seems appropriate; need more details on bot
 
     while order_count < MAX_ORDERS:
         nearest = None
@@ -80,11 +87,61 @@ def list_trips():
         current_weight += nearest.weight
         seed_address = nearest.address #calculate distance from newest address
 
-    #return trip
+    #return Trip(trip)
     #1 trip(list of destinations) or list of trips?
     return jsonify(error="not_implemented"), 501 #not full implementation, so keeping this for now
 
 
 @bp.post("/<trip_id>/dispatch")
 def dispatch_trip(trip_id):
-    return jsonify(error="not_implemented"), 501
+    # Configure token and coordinates
+    token = current_app.config.get("MAPBOX_ACCESS_TOKEN")
+    if not token:
+        current_app.logger.warning("MAPBOX_ACCESS_TOKEN not set — directions disabled")
+        return None
+    profile = "driving" # walking also seems appropriate; need more details on bot
+
+    # Coordinates formatting: longitude,latitude separated by semicolons
+    # The first coordinate defaults as both the start and end (roundtrip)
+    '''
+    coordinates = [
+        "-122.42,37.78",  # Depot / Starting point
+        "-122.45,37.91",  # Stop 1
+        "-122.48,37.73",  # Stop 2
+        "-122.41,37.76"   # Stop 3
+    ]
+    '''
+    #above code kept as example for now
+    coordinates = []
+    trip = trip_dictionary.get(trip_id)
+    for destination in trip:
+        coordinates.add(destination.address)
+
+    coord_string = ";".join(coordinates)
+
+    # Build URL
+    url = f"https://api.mapbox.com/optimized-trips/v1/{profile}/{coord_string}"
+    params = {
+        "access_token": token,
+        "geometries": "geojson",  # Returns the route line for mapping
+        "overview": "full",
+        "roundtrip": "true"       # Returns driver to the first coordinate
+    }
+
+    response = request.get(url, params=params)
+
+    if response.status_code == 200:
+        data = response.json()
+        # Extract the sequence of optimized stops
+        waypoints = data.get("waypoints", [])
+        print("Optimized Waypoint Order:")
+        for wp in sorted(waypoints, key=lambda x: x["waypoint_index"]):
+            print(f"Stop Sequence {wp['waypoint_index']}: Location Index {wp['trips_index']}")
+            
+        # The actual spatial path to plot on your map
+        route_geometry = data["trips"][0]["geometry"]
+    else:
+        print(f"Error: {response.status_code}", response.text)
+
+
+    return jsonify(error="not_implemented"), 501 #kept because not full implementation

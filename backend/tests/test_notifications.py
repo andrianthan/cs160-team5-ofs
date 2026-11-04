@@ -238,3 +238,15 @@ def test_status_endpoint_emails_customer_on_delivery(app, client):
     db.session.commit()
     client.patch(f"/api/orders/{oid}/status", json={"status": "delivered"})
     assert [to_of(m) for m in FakeSMTP.sent] == ["cust@example.com"]
+
+
+def test_overweight_prepare_emails_staff_manual_review(app, client):
+    o = world()
+    oid = o.id
+    db.session.get(Order, oid).weight_lb = Decimal("250")
+    db.session.commit()
+    login(client, "emp@example.com")
+    r = client.post(f"/api/orders/{oid}/prepare")
+    assert r.status_code == 409 and r.get_json()["error"] == "too_heavy_for_robot"
+    assert sorted(to_of(m) for m in FakeSMTP.sent) == ["emp@example.com", "mgr@example.com"]
+    assert {n.event for n in Notification.query} == {"manual_review"}

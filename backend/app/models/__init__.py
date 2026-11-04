@@ -13,3 +13,4 @@ from .cart import Cart, CartLine
 from .payment import Payment
 from .order import Order, OrderLine
 from .notification import Notification
+from .trip import Trip

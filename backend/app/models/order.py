@@ -25,15 +25,20 @@ class Order(db.Model):
     delivery_address = db.Column(db.Text, nullable=False)
     delivery_lat = db.Column(db.Float, nullable=False)
     delivery_lng = db.Column(db.Float, nullable=False)
+    # set when an Employee marks the Order prepared (Preparation Queue); cleared if it's taken back off
+    trip_id = db.Column(db.Integer, db.ForeignKey("trips.id"), index=True)
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=_now)
     updated_at = db.Column(db.DateTime(timezone=True), nullable=False, default=_now, onupdate=_now)
 
     lines = db.relationship("OrderLine", backref="order", cascade="all, delete-orphan", order_by="OrderLine.id")
+    user = db.relationship("User")
 
     def to_dict(self):
         return {
             "id": self.id,
             "userId": self.user_id,
+            "customerName": self.user.name,
+            "tripId": self.trip_id,
             "status": self.status,
             "lines": [line.to_dict() for line in self.lines],
             "subtotal": float(self.subtotal),

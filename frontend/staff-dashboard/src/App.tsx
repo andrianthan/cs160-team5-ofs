@@ -14,6 +14,7 @@ import {
 } from "@ofs/shared/components";
 
 import InventoryPage from "./pages/InventoryPage";
+import OrderQueuePage from "./pages/OrderQueuePage";
 import ReportsPage from "./pages/ReportsPage";
 
 const STAFF_ROLES: UserRole[] = ["employee", "manager"];
@@ -59,11 +60,7 @@ export default function App() {
             path="/queue"
             element={
               <RequireAuth roles={STAFF_ROLES}>
-                <PageStub
-                  title="Preparation Queue"
-                  task="T13"
-                  owner="Ethan"
-                />
+                <OrderQueuePage />
               </RequireAuth>
             }
           />

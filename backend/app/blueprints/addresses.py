@@ -14,10 +14,10 @@ bp = Blueprint("addresses", __name__, url_prefix="/api/addresses")
 # Points are (lng, lat), closed implicitly (ray casting doesn't need the first
 # point repeated).
 DELIVERY_ZONE_POLYGON = [
-    (-121.9015, 37.3455),  # NW — near St James Park
+    (-121.9060, 37.3455),  # NW — near St James Park
     (-121.8820, 37.3455),  # NE — near N 4th St
     (-121.8820, 37.3220),  # SE — near I-280
-    (-121.9015, 37.3220),  # SW — near Diridon / SAP Center
+    (-121.9060, 37.3220),  # SW — near Diridon / SAP Center
 ]
 
 

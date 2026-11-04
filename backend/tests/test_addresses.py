@@ -1,3 +1,4 @@
+import pytest
 from unittest.mock import patch
 
 from app.blueprints.addresses import inside_delivery_zone
@@ -56,3 +57,19 @@ def test_validate_returns_404_when_geocode_finds_nothing(mock_geocode, client):
 
     assert resp.status_code == 404
     assert resp.get_json()["error"] == "ADDRESS_NOT_FOUND"
+
+
+@pytest.mark.parametrize(
+    "name,lat,lng,expected",
+    [
+        ("San Jose City Hall", 37.3377, -121.8863, True),
+        ("St James Park", 37.3393, -121.8895, True),
+        ("SAP Center", 37.3328, -121.9010, True),
+        ("Diridon Station", 37.3299, -121.9025, True),
+        ("Santana Row", 37.3209, -121.9478, False),
+        ("San Francisco", 37.7749, -122.4194, False),
+        ("Palo Alto", 37.4419, -122.1430, False),
+    ],
+)
+def test_delivery_zone_landmarks(name, lat, lng, expected):
+    assert inside_delivery_zone({"lat": lat, "lng": lng}) is expected, name

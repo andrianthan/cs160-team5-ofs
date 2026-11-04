@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 from ..extensions import db
+from ..timeutil import iso_utc
 
 # LLD 2 §2.4 Order Status. Cancelled is only reachable through a Manager Order Override (T20).
 PLACED, PLANNED, OUT_FOR_DELIVERY, DELIVERED = "placed", "planned", "out_for_delivery", "delivered"
@@ -48,7 +49,7 @@ class Order(db.Model):
             "deliveryAddress": self.delivery_address,
             "deliveryLat": self.delivery_lat,
             "deliveryLng": self.delivery_lng,
-            "createdAt": self.created_at.isoformat(),
+            "createdAt": iso_utc(self.created_at),
         }
 
 

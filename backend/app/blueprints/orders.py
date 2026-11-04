@@ -12,11 +12,12 @@ from .auth import require_role, staff_required
 from .cart import validate_cart_for_checkout
 from ..config import Config
 from ..extensions import db
-from ..models import Cart, Order, OrderLine, Product, Trip
+from ..models import Cart, Order, OrderLine, Product
 from ..models.order import (
     DELIVERED, DELIVERY_FAILED, MANUAL_REVIEW, OUT_FOR_DELIVERY, PLACED, PLANNED, STATUSES,
 )
-from ..models.trip import OPEN
+from ..models.trip import NOT_DISPATCHED
+from ..planning import assign_to_trip, leave_trip
 from ..models.user import MANAGER
 
 bp = Blueprint("orders", __name__, url_prefix="/api/orders")
@@ -26,7 +27,7 @@ bp = Blueprint("orders", __name__, url_prefix="/api/orders")
 # Planned -> Out for Delivery through Dispatch, so no Order is ever Planned without a Trip.
 TRANSITIONS = {
     PLACED: {MANUAL_REVIEW},
-    PLANNED: {PLACED, MANUAL_REVIEW},  # taken back off its (still open) Trip
+    PLANNED: {PLACED, MANUAL_REVIEW},  # taken back off its Trip, while that hasn't been dispatched
     OUT_FOR_DELIVERY: {DELIVERED, DELIVERY_FAILED},
     DELIVERY_FAILED: {PLACED, MANUAL_REVIEW},
     MANUAL_REVIEW: {PLACED},
@@ -82,45 +83,6 @@ def place_order(payment):
     return order, None
 
 
-def assign_to_trip(order):
-    """BR-2/BR-6: put a prepared Order on the oldest open Trip it fits, or open a new Trip.
-
-    Fits = the Trip stays within TRIP_MAX_ORDERS Orders and TRIP_MAX_WEIGHT_LB. Returns the Trip,
-    or None when the Order alone is over the Robot limit (it goes to Manual Review instead).
-    The caller commits.
-    """
-    if order.weight_lb > Config.TRIP_MAX_WEIGHT_LB:
-        order.status = MANUAL_REVIEW
-        return None
-
-    # Lock the open Trips so two Employees preparing at once can't both take a Trip's last slot
-    # (no-op on SQLite). Counts come from the database, not from possibly stale loaded collections.
-    open_trips = Trip.query.filter_by(status=OPEN).order_by(Trip.created_at, Trip.id).with_for_update().all()
-    trip = None
-    for candidate in open_trips:
-        count, weight = db.session.query(
-            db.func.count(Order.id), db.func.coalesce(db.func.sum(Order.weight_lb), 0)
-        ).filter(Order.trip_id == candidate.id).one()
-        if count < Config.TRIP_MAX_ORDERS and Decimal(weight) + order.weight_lb <= Config.TRIP_MAX_WEIGHT_LB:
-            trip = candidate
-            break
-    if trip is None:
-        trip = Trip()
-        db.session.add(trip)
-
-    order.trip = trip
-    order.status = PLANNED
-    return trip
-
-
-def _leave_trip(order):
-    """Take an Order off its open Trip, dropping the Trip if that leaves it empty. The caller commits."""
-    trip = order.trip
-    order.trip = None
-    if trip is not None and trip.status == OPEN and not trip.orders:
-        db.session.delete(trip)
-
-
 def _visible(order_id):
     """The order if the signed-in user may see it: its customer, or any staff member."""
     order = db.session.get(Order, order_id)
@@ -166,10 +128,10 @@ def update_order_status(order_id):
         return _error("invalid_status", "Unknown order status.", 400)
     if new not in TRANSITIONS.get(order.status, set()):
         return _error("invalid_transition", f"Can't move an order from {order.status} to {new}.", 409)
-    if order.status == PLANNED and order.trip is not None and order.trip.status != OPEN:
+    if order.status == PLANNED and order.trip is not None and order.trip.status not in NOT_DISPATCHED:
         return _error("trip_dispatched", "That order's trip has already been dispatched.", 409)
     if new in (PLACED, MANUAL_REVIEW):
-        _leave_trip(order)  # back to the queue (or held): it's no longer on a Trip
+        leave_trip(order)  # back to the queue (or held): it's no longer on a Trip
     order.status = new
     db.session.commit()
     return jsonify(order.to_dict())

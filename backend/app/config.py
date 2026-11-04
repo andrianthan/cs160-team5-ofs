@@ -26,6 +26,7 @@ class Config:
     TRIP_MAX_ORDERS = 10
     TRIP_MAX_WEIGHT_LB = 200
     TRIP_DISPATCH_TIMEOUT_MIN = 30
+    TRIP_GROUP_RADIUS_KM = 0.5  # every Order on a Trip is within this of the others
 
 
 class TestConfig(Config):

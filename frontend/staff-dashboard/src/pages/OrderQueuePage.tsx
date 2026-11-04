@@ -73,9 +73,10 @@ export default function OrderQueuePage() {
     const markPrepared = (order: Order) =>
         act(order.id, async () => {
             const r = await prepareOrder(order.id);
-            return r.ok
-                ? { ok: true, message: `Order #${order.id} prepared and added to Trip #${r.data.trip.id} (${r.data.trip.orderCount} of 10 orders).` }
-                : { ok: false, message: r.data.message };
+            if (!r.ok) return { ok: false, message: r.data.message };
+            const { trip } = r.data;
+            const full = trip.status === "ready" ? " It's now full and ready to dispatch." : "";
+            return { ok: true, message: `Order #${order.id} prepared and added to Trip #${trip.id} (${trip.orderCount} of 10 orders).${full}` };
         });
 
     const moveTo = (order: Order, status: OrderStatus, done: string) =>

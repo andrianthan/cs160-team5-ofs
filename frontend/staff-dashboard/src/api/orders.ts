@@ -36,7 +36,8 @@ export type Order = {
 
 export type Trip = {
     id: number;
-    status: "open" | "dispatched" | "completed";
+    status: "open" | "ready" | "dispatched" | "completed";
+    readyReason: "full" | "deadline" | null; // why a "ready" Trip stopped taking orders
     orderIds: number[];
     orderCount: number;
     weightLb: number;

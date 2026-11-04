@@ -1,10 +1,15 @@
 from datetime import datetime, timezone
 
 from ..extensions import db
+from ..timeutil import iso_utc
 
-# open: still taking Orders (Preparation Queue adds to it). dispatched: out on a Robot. completed: back at the store.
-OPEN, DISPATCHED, COMPLETED = "open", "dispatched", "completed"
-TRIP_STATUSES = (OPEN, DISPATCHED, COMPLETED)
+# open: still taking Orders (Preparation Queue adds to it).
+# ready: locked because it's full or its oldest Order hit the dispatch deadline (BR-7); waits for an
+#        Employee to confirm the Robot is loaded and Dispatch it.
+# dispatched: out on a Robot. completed: back at the store.
+OPEN, READY, DISPATCHED, COMPLETED = "open", "ready", "dispatched", "completed"
+TRIP_STATUSES = (OPEN, READY, DISPATCHED, COMPLETED)
+NOT_DISPATCHED = (OPEN, READY)  # Orders can still be taken off these
 
 
 def _now():
@@ -19,6 +24,8 @@ class Trip(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     status = db.Column(db.String(20), nullable=False, default=OPEN, index=True)
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=_now)
+    ready_at = db.Column(db.DateTime(timezone=True))
+    ready_reason = db.Column(db.String(20))  # "full" or "deadline"
     dispatched_at = db.Column(db.DateTime(timezone=True))
     completed_at = db.Column(db.DateTime(timezone=True))
 
@@ -35,6 +42,7 @@ class Trip(db.Model):
             "orderIds": [o.id for o in self.orders],
             "orderCount": len(self.orders),
             "weightLb": float(self.weight_lb),
-            "createdAt": self.created_at.isoformat(),
-            "dispatchedAt": self.dispatched_at.isoformat() if self.dispatched_at else None,
+            "createdAt": iso_utc(self.created_at),
+            "readyReason": self.ready_reason,
+            "dispatchedAt": iso_utc(self.dispatched_at),
         }

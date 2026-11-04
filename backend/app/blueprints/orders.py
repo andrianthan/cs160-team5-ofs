@@ -10,6 +10,7 @@ from flask_login import current_user
 
 from .auth import require_role, staff_required
 from .cart import validate_cart_for_checkout
+from .. import notifications
 from ..extensions import db
 from ..models import Cart, Order, OrderLine, Product
 from ..models.order import (
@@ -125,6 +126,7 @@ def update_order_status(order_id):
         return _error("invalid_transition", f"Can't move an order from {order.status} to {new}.", 409)
     order.status = new
     db.session.commit()
+    notifications.notify_status_change(order)
     return jsonify(order.to_dict())
 
 

@@ -93,11 +93,7 @@ export default function App() {
             path="/reports"
             element={
               <RequireAuth roles={["manager"]}>
-                <PageStub
-                  title="Reports (Manager only)"
-                  task="T19"
-                  owner="Andrian"
-                />
+                <ReportsPage />
               </RequireAuth>
             }
           />

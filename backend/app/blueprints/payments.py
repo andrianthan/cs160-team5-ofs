@@ -5,6 +5,7 @@ from flask import Blueprint, current_app, jsonify, request
 from flask_login import current_user
 from sqlalchemy.exc import IntegrityError
 
+from .. import notifications
 from ..extensions import db
 from ..models import Payment
 from ..models.payment import CANCELED, FAILED, PENDING, REFUNDED, SUCCEEDED
@@ -86,7 +87,9 @@ def settle_succeeded(payment):
     order, reason = place_order(payment)
     if order is not None:
         if _claim(payment, status=SUCCEEDED, failure_reason=None, order_id=order.id):
+            order_id = order.id
             db.session.commit()
+            notifications.notify_order_event(order_id, notifications.ORDER_PLACED)
         else:
             db.session.rollback()  # the other path placed it first
         return True

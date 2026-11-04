@@ -19,6 +19,13 @@ class Config:
     SMTP_USERNAME = os.environ.get("SMTP_USERNAME")
     SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD")
     SMTP_FROM = os.environ.get("SMTP_FROM")
+    SMTP_STARTTLS = os.environ.get("SMTP_STARTTLS", "1") != "0"
+    SMTP_TIMEOUT_S = 10
+
+    # T17: emails go out from a background thread so a slow mail server never delays checkout.
+    NOTIFICATIONS_ASYNC = True
+    NOTIFY_MAX_ATTEMPTS = 3
+    NOTIFY_RETRY_DELAY_S = 2
 
     # BR-1..BR-9 constants (docs/part2 shared draft, business rules table)
     DELIVERY_FEE_THRESHOLD_LB = 20
@@ -30,4 +37,6 @@ class Config:
 
 class TestConfig(Config):
     TESTING = True
+    NOTIFICATIONS_ASYNC = False
+    NOTIFY_RETRY_DELAY_S = 0
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"

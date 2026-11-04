@@ -10,6 +10,7 @@ from flask_login import current_user
 
 from .auth import require_role, staff_required
 from .cart import validate_cart_for_checkout
+from .. import notifications
 from ..config import Config
 from ..extensions import db
 from ..models import Cart, Order, OrderLine, Product, Trip
@@ -172,6 +173,7 @@ def update_order_status(order_id):
         _leave_trip(order)  # back to the queue (or held): it's no longer on a Trip
     order.status = new
     db.session.commit()
+    notifications.notify_status_change(order)
     return jsonify(order.to_dict())
 
 
@@ -188,6 +190,7 @@ def prepare_order(order_id):
     trip = assign_to_trip(order)
     db.session.commit()
     if trip is None:
+        notifications.notify_status_change(order)  # Manual Review: tell Staff
         return _error(
             "too_heavy_for_robot",
             f"Order is over {Config.TRIP_MAX_WEIGHT_LB} lb, so it can't fit a Robot. Moved to Manual Review.",

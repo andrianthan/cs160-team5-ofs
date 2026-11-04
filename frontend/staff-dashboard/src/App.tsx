@@ -13,9 +13,7 @@ import {
   PageStub,
 } from "@ofs/shared/components";
 
-import DispatchPage from "./pages/DispatchPage";
 import InventoryPage from "./pages/InventoryPage";
-import OrderQueuePage from "./pages/OrderQueuePage";
 import ReportsPage from "./pages/ReportsPage";
 
 const STAFF_ROLES: UserRole[] = ["employee", "manager"];
@@ -93,11 +91,7 @@ export default function App() {
             path="/reports"
             element={
               <RequireAuth roles={["manager"]}>
-                <PageStub
-                  title="Reports (Manager only)"
-                  task="T19"
-                  owner="Andrian"
-                />
+                <ReportsPage />
               </RequireAuth>
             }
           />

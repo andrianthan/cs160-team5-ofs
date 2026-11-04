@@ -96,6 +96,10 @@ any future expiry, any CVC.
 Both frontend apps proxy `/api/*` to `localhost:5000` in dev (see each `vite.config.js`) —
 no CORS headaches locally.
 
+**Troubleshooting (macOS):**
+- *Port 5000 is taken.* macOS uses it for AirPlay Receiver (System Settings → General → AirDrop & Handoff → AirPlay Receiver). Either turn that off, or run on another port. Start the backend with `PORT=5001 python run.py`, and each frontend with `API_URL=http://localhost:5001 npm run dev:staff` (or `dev:storefront`). If you use Stripe, change the `--forward-to` port above too.
+- *Vite fails with "Cannot find native binding" / `@tailwindcss/oxide-darwin-arm64`.* The lockfile only lists the Linux binaries (an npm optional-dependency bug). Run `npm install --no-save @tailwindcss/oxide-darwin-arm64@4.3.3 -w staff-dashboard -w storefront` (use `oxide-darwin-x64` on Intel Macs). `--no-save` keeps `package-lock.json` unchanged.
+
 ## Shared Frontend Package
 
 The root npm workspace automatically links both Vite apps to `@ofs/shared` in

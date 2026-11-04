@@ -13,9 +13,7 @@ import {
   PageStub,
 } from "@ofs/shared/components";
 
-import DispatchPage from "./pages/DispatchPage";
 import InventoryPage from "./pages/InventoryPage";
-import OrderQueuePage from "./pages/OrderQueuePage";
 import ReportsPage from "./pages/ReportsPage";
 
 const STAFF_ROLES: UserRole[] = ["employee", "manager"];

@@ -45,6 +45,10 @@ def cancel_payment_intent(intent_id):
     return stripe.PaymentIntent.cancel(intent_id, api_key=current_app.config["STRIPE_SECRET_KEY"])
 
 
+def retrieve_payment_intent(intent_id):
+    return stripe.PaymentIntent.retrieve(intent_id, api_key=current_app.config["STRIPE_SECRET_KEY"])
+
+
 def refund_payment_intent(intent_id, key):
     """Full refund. The idempotency key makes webhook retries return the same refund, not a second one."""
     return stripe.Refund.create(
@@ -54,6 +58,66 @@ def refund_payment_intent(intent_id, key):
 
 def _error(code, message, status):
     return jsonify(error=code, message=message), status
+
+
+# Not final yet: a declined card leaves the same PaymentIntent open for another try.
+OPEN = (PENDING, FAILED)
+
+
+def _claim(payment, **values):
+    """Atomically move an open payment to a final state. False if the webhook or a poll already did.
+
+    The conditional UPDATE is what makes the two paths safe to race: only one request can match
+    status IN OPEN, so an Order is placed (or a refund issued) exactly once.
+    """
+    won = Payment.query.filter(Payment.id == payment.id, Payment.status.in_(OPEN)).update(
+        values, synchronize_session="fetch"
+    )
+    return won == 1
+
+
+def settle_succeeded(payment):
+    """The payment's intent succeeded: place the Order, or refund when it can't be filled.
+
+    Shared by the webhook and GET /api/payments/<id> polling, so checkout works even when webhooks
+    can't reach the server (local dev without `stripe listen`). Commits or rolls back.
+    Returns False only if the refund call failed, so the caller can ask Stripe to retry.
+    """
+    order, reason = place_order(payment)
+    if order is not None:
+        if _claim(payment, status=SUCCEEDED, failure_reason=None, order_id=order.id):
+            db.session.commit()
+        else:
+            db.session.rollback()  # the other path placed it first
+        return True
+
+    if not _claim(payment, status=REFUNDED, failure_reason=REFUND_REASONS[reason]):
+        db.session.rollback()
+        return True
+    try:
+        refund_payment_intent(payment.stripe_payment_intent_id, f"refund-{payment.id}")
+    except stripe.error.StripeError:
+        db.session.rollback()  # back to open, so a retry can refund
+        current_app.logger.exception("Stripe Refund.create failed")
+        return False
+    db.session.commit()
+    return True
+
+
+def _sync_with_stripe(payment):
+    """Catch up a payment whose webhook hasn't arrived by asking Stripe for the intent's status."""
+    if payment.status not in OPEN or not payment.stripe_payment_intent_id:
+        return
+    if not current_app.config.get("STRIPE_SECRET_KEY"):
+        return
+    try:
+        intent = retrieve_payment_intent(payment.stripe_payment_intent_id)
+    except stripe.error.StripeError:
+        current_app.logger.exception("Stripe PaymentIntent.retrieve failed")
+        return  # report what we have; the next poll tries again
+    if intent["status"] == "succeeded":
+        settle_succeeded(payment)
+        db.session.refresh(payment)
 
 
 def _unauth():
@@ -163,18 +227,10 @@ def webhook():
 
     kind = event["type"]
     if kind == "payment_intent.succeeded":
-        order, reason = place_order(payment)
-        if order is None:
-            try:
-                refund_payment_intent(intent["id"], f"refund-{payment.id}")
-            except stripe.error.StripeError:
-                db.session.rollback()
-                current_app.logger.exception("Stripe Refund.create failed")
-                return _error("payment_provider_error", "Refund failed; Stripe will retry.", 500)
-            payment.status, payment.failure_reason = REFUNDED, REFUND_REASONS[reason]
-        else:
-            payment.status, payment.failure_reason = SUCCEEDED, None
-    elif kind == "payment_intent.payment_failed":
+        if not settle_succeeded(payment):
+            return _error("payment_provider_error", "Refund failed; Stripe will retry.", 500)
+        return jsonify(received=True), 200
+    if kind == "payment_intent.payment_failed":
         err = intent.get("last_payment_error") or {}
         payment.status = FAILED
         payment.failure_reason = (err.get("message") or "Payment failed.")[:REASON_MAX]
@@ -191,6 +247,7 @@ def get_payment(payment_id):
     payment = _owned(payment_id)
     if payment is None:
         return _error("not_found", "Payment not found.", 404)
+    _sync_with_stripe(payment)
     return jsonify(_view(payment))
 
 

@@ -30,7 +30,13 @@ def calls(monkeypatch):
     monkeypatch.setattr(pay, "create_payment_intent", fake_create)
     monkeypatch.setattr(pay, "cancel_payment_intent", lambda intent_id: log.append(("cancel", intent_id)))
     monkeypatch.setattr(pay, "refund_payment_intent", lambda intent_id, key: log.append(("refund", intent_id, key)))
+    stripe_says(monkeypatch, "requires_payment_method")  # polling: not paid yet unless a test says so
     return log
+
+
+def stripe_says(monkeypatch, status):
+    """What Stripe reports for any PaymentIntent when GET /api/payments/<id> asks it."""
+    monkeypatch.setattr(pay, "retrieve_payment_intent", lambda intent_id: {"id": intent_id, "status": status})
 
 
 def sign_in(client, email="a@example.com"):
@@ -360,3 +366,95 @@ def test_refunded_not_downgraded(client, calls, monkeypatch):
     event(monkeypatch, "payment_intent.payment_failed", message="late")
     hook(client)
     assert Payment.query.one().status == "refunded"
+
+
+# ============ polling catches up without the webhook ============
+
+def poll(client):
+    return client.get(f"/api/payments/{Payment.query.one().id}").get_json()
+
+
+def test_poll_places_order_without_webhook(client, calls, monkeypatch):
+    sign_in(client)
+    p = fill_cart(client, qty=2, stock=5)
+    start(client)
+    assert poll(client)["orderId"] is None  # Stripe hasn't charged it yet
+
+    stripe_says(monkeypatch, "succeeded")
+    body = poll(client)
+    assert body["status"] == "succeeded" and body["orderId"] == Order.query.one().id
+    assert db.session.get(Product, p.product_id).stock_qty == 3
+
+
+def test_poll_then_webhook_places_one_order(client, calls, monkeypatch):
+    sign_in(client)
+    p = fill_cart(client, stock=5)
+    start(client)
+    stripe_says(monkeypatch, "succeeded")
+    poll(client)
+    event(monkeypatch, "payment_intent.succeeded")
+    assert hook(client).status_code == 200
+    assert Order.query.count() == 1 and db.session.get(Product, p.product_id).stock_qty == 4
+    assert not [c for c in calls if c[0] == "refund"]
+
+
+def test_webhook_then_poll_places_one_order(client, calls, monkeypatch):
+    sign_in(client)
+    fill_cart(client)
+    start(client)
+    event(monkeypatch, "payment_intent.succeeded")
+    hook(client)
+    stripe_says(monkeypatch, "succeeded")
+    assert poll(client)["orderId"] == Order.query.one().id and Order.query.count() == 1
+
+
+def test_losing_the_race_never_refunds_a_placed_order(client, calls, monkeypatch):
+    # The other path placed the order and emptied the cart between our status check and our claim.
+    sign_in(client)
+    fill_cart(client)
+    start(client)
+    event(monkeypatch, "payment_intent.succeeded")
+    hook(client)
+    payment = Payment.query.one()
+    assert pay.settle_succeeded(payment) is True  # sees an empty cart, but must not claim or refund
+    assert payment.status == "succeeded" and Order.query.count() == 1
+    assert not [c for c in calls if c[0] == "refund"]
+
+
+def test_poll_sold_out_refunds(client, calls, monkeypatch):
+    sign_in(client)
+    p = fill_cart(client, qty=1, stock=1)
+    start(client)
+    p.stock_qty = 0
+    db.session.commit()
+    stripe_says(monkeypatch, "succeeded")
+    body = poll(client)
+    assert body["status"] == "refunded" and body["orderId"] is None
+    assert [c for c in calls if c[0] == "refund"] == [("refund", "pi_1", f"refund-{body['paymentId']}")]
+
+
+def test_poll_survives_stripe_errors(client, calls, monkeypatch):
+    def boom(intent_id):
+        raise stripe.error.APIConnectionError("down")
+
+    sign_in(client)
+    fill_cart(client)
+    start(client)
+    monkeypatch.setattr(pay, "retrieve_payment_intent", boom)
+    resp = client.get(f"/api/payments/{Payment.query.one().id}")
+    assert resp.status_code == 200 and resp.get_json()["status"] == "pending"
+
+
+def test_poll_skips_stripe_once_final(client, calls, monkeypatch):
+    sign_in(client)
+    fill_cart(client)
+    start(client)
+    event(monkeypatch, "payment_intent.succeeded")
+    hook(client)
+
+    def must_not_call(intent_id):
+        raise AssertionError("final payments shouldn't hit Stripe")
+
+    monkeypatch.setattr(pay, "retrieve_payment_intent", must_not_call)
+    assert poll(client)["status"] == "succeeded"
+

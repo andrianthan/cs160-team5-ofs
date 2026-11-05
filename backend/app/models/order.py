@@ -15,6 +15,14 @@ def _now():
 
 class Order(db.Model):
     __tablename__ = "orders"
+    __table_args__ = (
+        db.CheckConstraint("status IN ('placed','planned','out_for_delivery','delivered','delivery_failed','manual_review','cancelled')", name="ck_orders_status"),
+        db.CheckConstraint("subtotal >= 0 AND delivery_fee IN (0,10) AND total = subtotal + delivery_fee", name="ck_orders_totals"),
+        # Historical overweight Orders must remain representable for Manual Review.
+        db.CheckConstraint("weight_lb > 0", name="ck_orders_weight"),
+        db.Index("ix_orders_user_created", "user_id", "created_at"),
+        db.Index("ix_orders_status_created", "status", "created_at"),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
@@ -56,6 +64,12 @@ class Order(db.Model):
 class OrderLine(db.Model):
     # Snapshot of the cart line at payment time: later price or name edits don't rewrite past orders.
     __tablename__ = "order_lines"
+    __table_args__ = (
+        db.CheckConstraint("quantity > 0", name="ck_order_lines_quantity"),
+        db.CheckConstraint("unit_price >= 0 AND weight_lb > 0", name="ck_order_lines_snapshot"),
+        db.Index("ix_order_lines_order", "order_id"),
+        db.Index("ix_order_lines_product", "product_id"),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False)

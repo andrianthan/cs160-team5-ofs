@@ -13,6 +13,11 @@ def _now():
 
 class Payment(db.Model):
     __tablename__ = "payments"
+    __table_args__ = (
+        db.UniqueConstraint("order_id", name="uq_payments_order_id"),
+        db.CheckConstraint("amount_cents >= 0", name="ck_payments_amount"),
+        db.CheckConstraint("status IN ('pending','succeeded','failed','canceled','refunded')", name="ck_payments_status"),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
@@ -26,8 +31,8 @@ class Payment(db.Model):
     delivery_address = db.Column(db.Text)
     delivery_lat = db.Column(db.Float)
     delivery_lng = db.Column(db.Float)
-    # Set by the webhook once the Order exists. Plain integer on purpose: orders table is T02/T12's.
-    order_id = db.Column(db.Integer)
+    # Pending/failed payments have no Order; successful checkout links exactly one.
+    order_id = db.Column(db.Integer, db.ForeignKey("orders.id", name="fk_payments_order_id", ondelete="RESTRICT"))
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=_now)
     updated_at = db.Column(db.DateTime(timezone=True), nullable=False, default=_now, onupdate=_now)
 

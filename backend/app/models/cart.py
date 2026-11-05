@@ -20,7 +20,11 @@ class Cart(db.Model):
 class CartLine(db.Model):
     # Separate from the future order_lines table: a cart line is mutable, an order line is a snapshot.
     __tablename__ = "cart_lines"
-    __table_args__ = (db.UniqueConstraint("cart_id", "product_id"),)
+    __table_args__ = (
+        db.UniqueConstraint("cart_id", "product_id"),
+        db.CheckConstraint("quantity > 0", name="ck_cart_lines_quantity"),
+        db.Index("ix_cart_lines_product", "product_id"),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     cart_id = db.Column(db.Integer, db.ForeignKey("carts.id"), nullable=False)

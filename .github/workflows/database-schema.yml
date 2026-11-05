@@ -1,0 +1,32 @@
+name: Database schema checks
+# Every PR, plus every push to main, so main itself keeps the PostgreSQL coverage.
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ofs
+          POSTGRES_PASSWORD: test_only_password
+          POSTGRES_DB: ofs_test
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U ofs -d ofs_test" --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r backend/requirements.txt
+      - name: Test backend and migrations on SQLite and PostgreSQL
+        working-directory: backend
+        env:
+          TEST_POSTGRES_URL: postgresql://ofs:test_only_password@localhost:5432/ofs_test
+        run: python -m pytest -q

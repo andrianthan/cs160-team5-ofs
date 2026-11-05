@@ -11,6 +11,9 @@ STAFF_ROLES = (EMPLOYEE, MANAGER)
 
 class User(UserMixin, db.Model):
     __tablename__ = "users"
+    __table_args__ = (
+        db.CheckConstraint("role IN ('customer','employee','manager')", name="ck_users_role"),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(255), unique=True, nullable=False, index=True)

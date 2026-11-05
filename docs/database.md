@@ -10,21 +10,32 @@ Run commands from `backend` with the virtual environment active and DATABASE_URL
 set to the intended database (Flask loads `backend/.env` automatically).
 
 ```sh
-flask --app app:create_app db upgrade
+python seed_demo.py                       # runs the migrations, then adds demo rows
+flask --app app:create_app db upgrade     # same migrations, without demo data
 flask --app app:create_app db current
 flask --app app:create_app db check
-python seed_demo.py
 ```
 
-`0001_baseline` recreates the nine application tables present on main at commit
-ee31522. `0002_foundation` adds five tables, robot/route fields on trips, the payment
+`seed_demo.py` builds the schema with the migrations (not `db.create_all()`), so every
+local database is versioned and later `db upgrade` runs only what's new.
+
+### Existing local databases (`demo.db`)
+
+A `demo.db` made by the old seed (before this PR) has tables but no `alembic_version`,
+so `seed_demo.py` stops with a message instead of migrating. Demo data is disposable:
+delete or move the file and run `python seed_demo.py` again.
+
+`0001_baseline` recreates the application tables exactly as `db.create_all()` built them on
+main at commit 0eee4a4 (after the T13 trip rework, which added the `ready` status and
+`ready_at`/`ready_reason`, and T17 notifications). `0002_foundation` adds five tables, robot/route fields on trips, the payment
 foreign key, named checks, and query indexes. Upgrade preserves valid existing
 rows. A constraint violation stops the migration; inspect invalid records instead
 of deleting them to force an upgrade.
 
 For an existing unversioned database created with `db.create_all()`, back up first
 and compare its tables, columns and constraints against `0001_baseline`. Only
-when it matches that baseline should its owner run
+when it matches that baseline (in particular: `trips.ready_at`/`ready_reason` and the
+`notifications` table exist) should its owner run
 `flask --app app:create_app db stamp 0001_baseline`, followed by `db upgrade`.
 Stamp only records a revision; it does not create or repair tables. Older partial
 schemas need an explicit reconciliation migration. Do not stamp `head` to hide
@@ -42,7 +53,13 @@ tables and their data; use it only on a backed-up/disposable database.
 - Order lines preserve price, weight and name snapshots after catalog changes.
 - Named checks reject negative stock/prices, nonpositive quantities/weights, invalid
   statuses, inconsistent order totals and inventory-log arithmetic, invalid coordinates,
-  and invalid robot capacities. Stop numbers are 1–10 and unique within a trip.
+  Stop numbers are 1–10 and unique within a trip.
+- Business-rule numbers stay in `config.py`, not in checks: the database checks that
+  `total = subtotal + delivery_fee` and that the fee isn't negative, but not that it is $0 or
+  $10 (BR-1), and robots have no capacity columns (every robot's limit is BR-6's
+  `TRIP_MAX_ORDERS` / `TRIP_MAX_WEIGHT_LB`). Changing a rule needs no migration.
+- A trip stop is unique per (trip, order), not per order: a failed delivery goes back to the
+  queue and can ride a later trip, and its first stop stays as history.
 - Indexes support catalog filtering, customer/order queues, inventory history, and routes.
 - Pending payments allow a null order_id; linked payments use a unique foreign key.
 - InventoryLog storage is ready; T05/T12 must write sale/restock/cancel entries in the

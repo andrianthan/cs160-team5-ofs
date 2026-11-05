@@ -27,7 +27,7 @@ EXISTING_CHECKS = {'users': [('ck_users_role', "role IN ('customer','employee','
              'status IN '
              "('placed','planned','out_for_delivery','delivered','delivery_failed','manual_review','cancelled')"),
             ('ck_orders_totals',
-             'subtotal >= 0 AND delivery_fee IN (0,10) AND total = subtotal + delivery_fee'),
+             'subtotal >= 0 AND delivery_fee >= 0 AND total = subtotal + delivery_fee'),
             ('ck_orders_weight', 'weight_lb > 0')],
  'order_lines': [('ck_order_lines_quantity', 'quantity > 0'),
                  ('ck_order_lines_snapshot', 'unit_price >= 0 AND weight_lb > 0')],
@@ -35,7 +35,7 @@ EXISTING_CHECKS = {'users': [('ck_users_role', "role IN ('customer','employee','
               ('ck_payments_status',
                "status IN ('pending','succeeded','failed','canceled','refunded')")],
  'trips': [('ck_trips_duration', 'estimated_duration_minutes >= 0'),
-           ('ck_trips_status', "status IN ('open','dispatched','completed')")]}
+           ('ck_trips_status', "status IN ('open','ready','dispatched','completed')")]}
 
 
 def upgrade():
@@ -46,13 +46,10 @@ def upgrade():
     sa.Column('status', sa.String(length=24), server_default='available', nullable=False),
     sa.Column('current_latitude', sa.Numeric(precision=9, scale=6), nullable=True),
     sa.Column('current_longitude', sa.Numeric(precision=9, scale=6), nullable=True),
-    sa.Column('max_order_count', sa.SmallInteger(), server_default='10', nullable=False),
-    sa.Column('max_weight_lb', sa.Numeric(precision=8, scale=2), server_default='200', nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.CheckConstraint("status IN ('available','reserved','loading','out_for_delivery','returning','offline')", name='ck_robots_status'),
     sa.CheckConstraint('current_latitude BETWEEN -90 AND 90', name='ck_robots_latitude'),
     sa.CheckConstraint('current_longitude BETWEEN -180 AND 180', name='ck_robots_longitude'),
-    sa.CheckConstraint('max_order_count = 10 AND max_weight_lb = 200', name='ck_robots_capacity'),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('robot_code')
     )
@@ -132,9 +129,13 @@ def upgrade():
     sa.ForeignKeyConstraint(['order_id'], ['orders.id'], ondelete='RESTRICT'),
     sa.ForeignKeyConstraint(['trip_id'], ['trips.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('order_id'),
+    # One stop per (trip, order), not per order: a failed delivery can ride a later Trip.
+    sa.UniqueConstraint('trip_id', 'order_id', name='uq_trip_stops_order'),
     sa.UniqueConstraint('trip_id', 'stop_number', name='uq_trip_stops_sequence')
     )
+    with op.batch_alter_table('trip_stops', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_trip_stops_order_id'), ['order_id'], unique=False)
+
     with op.batch_alter_table('cart_lines', schema=None) as batch_op:
         batch_op.create_index('ix_cart_lines_product', ['product_id'], unique=False)
 

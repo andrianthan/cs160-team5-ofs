@@ -2,12 +2,15 @@ from ..extensions import db
 
 
 class Robot(db.Model):
-    """Persisted fleet state for the T15 simulator."""
+    """Persisted fleet state for the T15 simulator.
+
+    No capacity columns: every Robot carries the same load, and that limit is
+    Config.TRIP_MAX_ORDERS / TRIP_MAX_WEIGHT_LB (BR-6), enforced when Orders join a Trip.
+    """
 
     __tablename__ = "robots"
     __table_args__ = (
         db.CheckConstraint("status IN ('available','reserved','loading','out_for_delivery','returning','offline')", name="ck_robots_status"),
-        db.CheckConstraint("max_order_count = 10 AND max_weight_lb = 200", name="ck_robots_capacity"),
         db.CheckConstraint("current_latitude BETWEEN -90 AND 90", name="ck_robots_latitude"),
         db.CheckConstraint("current_longitude BETWEEN -180 AND 180", name="ck_robots_longitude"),
     )
@@ -17,6 +20,4 @@ class Robot(db.Model):
     status = db.Column(db.String(24), nullable=False, server_default="available", index=True)
     current_latitude = db.Column(db.Numeric(9, 6))
     current_longitude = db.Column(db.Numeric(9, 6))
-    max_order_count = db.Column(db.SmallInteger, nullable=False, server_default="10")
-    max_weight_lb = db.Column(db.Numeric(8, 2), nullable=False, server_default="200")
     updated_at = db.Column(db.DateTime(timezone=True), nullable=False, server_default=db.func.now(), onupdate=db.func.now())

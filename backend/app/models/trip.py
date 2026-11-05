@@ -23,7 +23,8 @@ class Trip(db.Model):
     # route order come with Dispatch (T14/T15).
     __tablename__ = "trips"
     __table_args__ = (
-        db.CheckConstraint("status IN ('open','dispatched','completed')", name="ck_trips_status"),
+        # Keep in sync with TRIP_STATUSES above (and 0002_foundation's EXISTING_CHECKS).
+        db.CheckConstraint("status IN ('open','ready','dispatched','completed')", name="ck_trips_status"),
         db.CheckConstraint("estimated_duration_minutes >= 0", name="ck_trips_duration"),
         db.Index("ix_trips_status_created", "status", "created_at"),
     )

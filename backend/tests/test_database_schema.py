@@ -113,7 +113,7 @@ def test_constraints_reject_invalid_rows_and_orphan_payments(database_app):
         ("UPDATE products SET weight_lb=0 WHERE product_id=:id", product.product_id),
         ("UPDATE products SET price=-1 WHERE product_id=:id", product.product_id),
         ("UPDATE users SET role='admin' WHERE id=:id", user.id),
-        ("UPDATE robots SET max_order_count=11 WHERE id=:id", robot.id),
+        ("UPDATE robots SET status='flying' WHERE id=:id", robot.id),
         ("UPDATE addresses SET latitude=91 WHERE id=:id", Address.query.first().id),
         ("UPDATE inventory_log SET after_qty=999999 WHERE id=:id", InventoryLog.query.first().id),
     ]
@@ -161,3 +161,32 @@ def test_order_snapshot_and_trip_stop_integrity(database_app):
                 another = make_order(customer, product)
                 db.session.add(TripStop(trip_id=trip.id, order_id=another.id, stop_number=number, latitude=37.333, longitude=-121.889))
                 db.session.flush()
+
+
+def test_failed_delivery_can_ride_a_later_trip(database_app):
+    # delivery_failed -> placed sends an Order back to the queue, so it can get a stop on a second
+    # Trip; the first stop stays as history. Twice on the same Trip is still rejected.
+    migrate()
+    add_test_rows()
+    customer = User.query.filter_by(email="customer@example.com").one()
+    order = make_order(customer, Product.query.first())
+    first, second = Trip(status="dispatched"), Trip()
+    db.session.add_all([first, second])
+    db.session.flush()
+    db.session.add(TripStop(trip_id=first.id, order_id=order.id, stop_number=1, latitude=37.333,
+                            longitude=-121.889, status="delivery_failed"))
+    db.session.add(TripStop(trip_id=second.id, order_id=order.id, stop_number=1, latitude=37.333, longitude=-121.889))
+    db.session.commit()
+    assert TripStop.query.filter_by(order_id=order.id).count() == 2
+    with pytest.raises(IntegrityError):
+        with db.session.begin_nested():
+            db.session.add(TripStop(trip_id=second.id, order_id=order.id, stop_number=2, latitude=37.333, longitude=-121.889))
+            db.session.flush()
+
+
+def test_trip_can_be_ready(database_app):
+    # T13 locks full or overdue Trips as "ready" (BR-6/BR-7); the status check must allow it.
+    migrate()
+    db.session.add(Trip(status="ready", ready_reason="full"))
+    db.session.commit()
+    assert Trip.query.one().status == "ready"

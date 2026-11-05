@@ -17,7 +17,8 @@ depends_on = None
 
 
 def upgrade():
-    # Baseline at main ee31522, including the merged T17 notification model.
+    # Baseline = the tables on main at 0eee4a4 (after the T13 trip rework and T17 notifications),
+    # i.e. exactly what `db.create_all()` built for everyone before migrations existed.
     op.create_table('products',
     sa.Column('product_id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(length=160), nullable=False),
@@ -36,6 +37,10 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('status', sa.String(length=20), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    # ready_at/ready_reason came with the T13 trip rework (BR-6/BR-7 locking): set when a Trip
+    # locks as "ready", with reason "full" or "deadline".
+    sa.Column('ready_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('ready_reason', sa.String(length=20), nullable=True),
     sa.Column('dispatched_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('completed_at', sa.DateTime(timezone=True), nullable=True),
     sa.PrimaryKeyConstraint('id')
@@ -149,7 +154,8 @@ def upgrade():
 def downgrade():
     op.drop_index("ix_notifications_order_id", table_name="notifications")
     op.drop_table("notifications")
-    # Baseline at main ee31522, including the merged T17 notification model.
+    # Baseline = the tables on main at 0eee4a4 (after the T13 trip rework and T17 notifications),
+    # i.e. exactly what `db.create_all()` built for everyone before migrations existed.
     op.drop_table('order_lines')
     op.drop_table('cart_lines')
     op.drop_table('payments')

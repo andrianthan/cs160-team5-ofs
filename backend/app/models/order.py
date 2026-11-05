@@ -17,8 +17,11 @@ class Order(db.Model):
     __tablename__ = "orders"
     __table_args__ = (
         db.CheckConstraint("status IN ('placed','planned','out_for_delivery','delivered','delivery_failed','manual_review','cancelled')", name="ck_orders_status"),
-        db.CheckConstraint("subtotal >= 0 AND delivery_fee IN (0,10) AND total = subtotal + delivery_fee", name="ck_orders_totals"),
-        # Historical overweight Orders must remain representable for Manual Review.
+        # The fee amount (BR-1) lives in Config.DELIVERY_FEE_AMOUNT, so the database only checks
+        # the arithmetic; repeating "$0 or $10" here would make a fee change need a migration too.
+        db.CheckConstraint("subtotal >= 0 AND delivery_fee >= 0 AND total = subtotal + delivery_fee", name="ck_orders_totals"),
+        # Every Order has at least one line, and products weigh > 0, so an Order never weighs 0.
+        # No upper bound: checkout blocks > 200 lb (BR-3), but Manual Review must still be able to hold one.
         db.CheckConstraint("weight_lb > 0", name="ck_orders_weight"),
         db.Index("ix_orders_user_created", "user_id", "created_at"),
         db.Index("ix_orders_status_created", "status", "created_at"),

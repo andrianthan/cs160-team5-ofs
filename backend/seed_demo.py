@@ -2,7 +2,12 @@
     export DATABASE_URL=sqlite:///demo.db
     python seed_demo.py
 """
+import sys
 from decimal import Decimal
+from pathlib import Path
+
+import sqlalchemy as sa
+from flask_migrate import upgrade
 
 from app import create_app
 from app.extensions import db
@@ -32,9 +37,21 @@ DEMO_CART = {
     "Free-Range Eggs (dozen)": 1,
 }
 
+MIGRATIONS = Path(__file__).resolve().parent / "migrations"
+
 app = create_app()
 with app.app_context():
-    db.create_all()
+    # Build the schema through the migrations, not db.create_all(): that leaves the database
+    # versioned (alembic_version), so a later `flask db upgrade` applies only what's new.
+    tables = set(sa.inspect(db.engine).get_table_names())
+    if tables and "alembic_version" not in tables:
+        # Made by the old create_all() seed: it has tables but no version, so migrating would fail
+        # with "table already exists". Demo data is disposable, so recreating it is the simple fix.
+        sys.exit(
+            f"{db.engine.url.database} was created before migrations existed.\n"
+            "Delete it (or move it aside) and run seed_demo.py again. See docs/database.md."
+        )
+    upgrade(directory=str(MIGRATIONS))
 
     users = {}
     for email, name, role, password in DEMO_USERS:

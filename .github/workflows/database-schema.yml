@@ -1,7 +1,8 @@
 name: Database schema checks
+# Every PR, plus every push to main, so main itself keeps the PostgreSQL coverage.
 on:
   push:
-    branches: ["anuj/t02-database"]
+    branches: ["main"]
   pull_request:
 permissions:
   contents: read

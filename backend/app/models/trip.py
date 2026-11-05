@@ -3,13 +3,14 @@ from datetime import datetime, timezone
 from ..extensions import db
 from ..timeutil import iso_utc
 
-# open: still taking Orders (Preparation Queue adds to it).
-# ready: locked because it's full or its oldest Order hit the dispatch deadline (BR-7); waits for an
-#        Employee to confirm the Robot is loaded and Dispatch it.
-# dispatched: out on a Robot. completed: back at the store.
+# Trip status: open -> ready -> dispatched -> completed
+# open:       taking Orders
+# ready:      locked (full or 30-min deadline), awaiting Dispatch
+# dispatched: out on a Robot
+# completed:  back at the store (not set anywhere yet)
 OPEN, READY, DISPATCHED, COMPLETED = "open", "ready", "dispatched", "completed"
 TRIP_STATUSES = (OPEN, READY, DISPATCHED, COMPLETED)
-NOT_DISPATCHED = (OPEN, READY)  # Orders can still be taken off these
+NOT_DISPATCHED = (OPEN, READY)  # Robot hasn't left: can dispatch, can remove Orders
 
 
 def _now():

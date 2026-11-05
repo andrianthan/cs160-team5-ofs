@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 
 import ProductDetails from "../components/ProductDetails";
 
+import { CategoryThumb } from "@ofs/shared/components";
 import { useAuth } from "@ofs/shared/auth";
 import { listProducts, type Product } from "@ofs/shared/products";
 import { useCart, type CartResult } from "../CartContext";
@@ -244,7 +245,7 @@ function ProductTile({ product, quantityInCart = 0, disabled, onAdd, onOpen }: P
     return (
         <div className={
             `bg-white border border-brand-100 rounded-3xl p-4 flex flex-col gap-2 
-            hover:shadow-md hover:shadow-brand-900/5 transition-shadow duration-200
+            hover:-translate-y-0.5 hover:shadow-md hover:shadow-brand-900/10 transition duration-200
             ${product.stock <= 0 ? "opacity-50 bg-brand-50/50" : ""}`
         }
         >
@@ -262,12 +263,7 @@ function ProductTile({ product, quantityInCart = 0, disabled, onAdd, onOpen }: P
                         className="w-full aspect-square rounded-2xl object-cover"
                     />
                 ) : (
-                    <div
-                        className="w-full aspect-square rounded-2xl bg-brand-50 text-brand-700 flex items-center justify-center text-3xl font-display font-bold"
-                        aria-hidden="true"
-                    >
-                        {product.name[0]}
-                    </div>
+                    <CategoryThumb category={product.category} name={product.name} />
                 )}
 
                 <div className="font-medium text-sm leading-snug">

@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
+import { BasilLogo } from "./BrandMark";
 import FormError from "./FormError";
 import FormField from "./FormField";
 
@@ -41,8 +42,9 @@ export default function LoginPage({
 
     return (
         <main className="mx-auto mt-8 max-w-sm px-4">
-            <div className="mb-6 text-center">
-                <h1 className="font-display text-2xl font-bold">{title}</h1>
+            <div className="mb-6 flex flex-col items-center text-center">
+                <BasilLogo className="mb-3 h-14 w-14 drop-shadow-sm" />
+                <h1 className="font-display text-3xl font-bold tracking-tight text-brand-800">{title}</h1>
                 {subtitle && (
                     <p className="mt-1 text-sm text-brand-900/60">
                         {subtitle}

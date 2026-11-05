@@ -8,6 +8,7 @@ import {
 import {
   AccountMenu,
   AppHeader,
+  BrandMark,
   LoginPage,
   NavPill,
   PageStub,
@@ -23,7 +24,7 @@ function Nav() {
   const { user } = useAuth();
 
   return (
-    <AppHeader brand={<NavLink to="/queue">OFS Staff</NavLink>}>
+    <AppHeader brand={<NavLink to="/queue"><BrandMark suffix="Staff" /></NavLink>}>
       {user && (
         <>
           <NavPill to="/queue">Prep Queue</NavPill>
@@ -50,7 +51,7 @@ export default function App() {
             path="/login"
             element={
               <LoginPage
-                title="OFS Staff"
+                title="Basil Staff"
                 subtitle="Sign in with an Employee or Manager account."
                 defaultRedirect="/queue"
               />

@@ -145,16 +145,16 @@ def _send(msg):
 
 def _build(order, event, name, email):
     subject, intro = {
-        ORDER_PLACED: (f"OFS order #{order.id} confirmed", "Thanks for your order. We're getting it ready."),
-        OUT_FOR_DELIVERY_EVENT: (f"OFS order #{order.id} is on its way", "Your order is out for delivery."),
-        DELIVERED_EVENT: (f"OFS order #{order.id} was delivered", "Your order has been delivered. Enjoy!"),
+        ORDER_PLACED: (f"Basil order #{order.id} confirmed", "Thanks for your order. We're getting it ready."),
+        OUT_FOR_DELIVERY_EVENT: (f"Basil order #{order.id} is on its way", "Your order is out for delivery."),
+        DELIVERED_EVENT: (f"Basil order #{order.id} was delivered", "Your order has been delivered. Enjoy!"),
         DELIVERY_FAILED_EVENT: (
-            f"OFS order #{order.id}: delivery failed",
+            f"Basil order #{order.id}: delivery failed",
             "We couldn't hand over the order at the stop. It is back at the store and "
             "we'll reschedule it.",
         ),
         MANUAL_REVIEW_EVENT: (
-            f"OFS order #{order.id} needs manual review",
+            f"Basil order #{order.id} needs manual review",
             "This order was sent to Manual Review and needs a staff decision.",
         ),
     }[event]
@@ -162,7 +162,7 @@ def _build(order, event, name, email):
     body = (
         f"Hi {name},\n\n{intro}\n\n"
         f"Order #{order.id}\nDeliver to: {order.delivery_address}\n{lines}\n"
-        f"Total: ${order.total:.2f}\n\n- OFS On-Demand Delivery\n"
+        f"Total: ${order.total:.2f}\n\n- Basil, by OFS\n"
     )
     msg = EmailMessage()
     msg["Subject"], msg["From"], msg["To"] = subject, current_app.config.get("SMTP_FROM") or "no-reply@ofs.local", email

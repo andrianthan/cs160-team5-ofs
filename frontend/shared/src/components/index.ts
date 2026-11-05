@@ -1,5 +1,7 @@
 export { default as AccountMenu } from "./AccountMenu";
 export { default as AppHeader } from "./AppHeader";
+export { default as BrandMark, BasilLogo } from "./BrandMark";
+export { default as CategoryThumb } from "./CategoryThumb";
 export { default as FormError } from "./FormError";
 export { default as FormField } from "./FormField";
 export { default as LoginPage } from "./LoginPage";

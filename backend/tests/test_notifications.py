@@ -87,6 +87,7 @@ def test_order_placed_emails_customer_only(app):
     assert [to_of(m) for m in FakeSMTP.sent] == ["cust@example.com"]
     m = FakeSMTP.sent[0]
     assert f"#{o.id}" in m["Subject"] and "$4.00" in m.get_content() and "1 Main St" in m.get_content()
+    assert m["Subject"].startswith("Basil order") and "Basil, by OFS" in m.get_content()
     assert m["From"] == "no-reply@ofs.test"
 
 

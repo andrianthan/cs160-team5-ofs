@@ -2,146 +2,77 @@
 # LLD 3: trip grouping loop (oldest Order first, nearest neighbors, BR-2/BR-6),
 # 30-min dispatch timer (BR-7). T14 Route Optimizer (Mapbox Optimization) and
 # T15 Robot Fleet simulator feed into these same endpoints.
-from flask import Blueprint, current_app, jsonify, request
+# Grouping itself lives in app/planning.py (shared with POST /api/orders/<id>/prepare).
+# The earlier Mapbox nearest-neighbor draft (commit 49017d6) is the starting point for T14 stop ordering.
+from datetime import datetime, timezone
 
-import uuid # FOR PLACEHOLDER ORDER OBJECT - REMOVE IF UNUSED IN FINAL
-from datetime import datetime, timedelta
+from flask import Blueprint, jsonify
+
+from .auth import staff_required
+from ..extensions import db
+from ..models import Trip
+from ..models.order import OUT_FOR_DELIVERY
+from ..models.trip import DISPATCHED, NOT_DISPATCHED, OPEN, READY
+from ..planning import lock_due_trips, trip_deadline
+from ..timeutil import iso_utc
 
 bp = Blueprint("trips", __name__, url_prefix="/api/trips")
 
-# PLACEHOLDER ORDER OBJECT - ADJUST IMPLEMENTATION WHEN READY
-class Order:
-    def __init__(self, address, weight, time):
-        self.id = uuid.uuid4()
-        self.address = address #mapbox location; should probably refactor to location
-        self.weight = weight #pounds
-        self.time = time #datetime
 
-# PLACEHOLDER TRIP OBJECT
-class Trip:
-    def __init__(self, triplist):
-        self.id = uuid.uuid4()
-        self.triplist = triplist #list of destinations from list_trips()
+def _error(code, message, status):
+    return jsonify(error=code, message=message), status
 
-MAX_ORDERS = 10
-MAX_WEIGHT = 200.0
-order_queue = [] #placeholder, orders added in order of time
-trip_dictionary = {} #placeholder, meant to store trip objects
+
+def _view(trip, now):
+    deadline = trip_deadline(trip)
+    out = trip.to_dict()
+    out["deadline"] = deadline.isoformat() if deadline else None
+    out["overdue"] = bool(deadline and deadline <= now and trip.status in NOT_DISPATCHED)
+    out["orders"] = [
+        {
+            "id": o.id,
+            "customerName": o.user.name,
+            "status": o.status,
+            "weightLb": float(o.weight_lb),
+            "deliveryAddress": o.delivery_address,
+            "deliveryLat": o.delivery_lat,
+            "deliveryLng": o.delivery_lng,
+            "createdAt": iso_utc(o.created_at),
+        }
+        for o in trip.orders
+    ]
+    return out
+
 
 @bp.get("")
+@staff_required
 def list_trips():
-    if len(order_queue) == 0:
-        return None
-    seed_order = order_queue[0]
-    trip = [] #can try min heap implementation; parse through order queue for now
-    trip.add(seed_order)
-    order_queue.remove(seed_order)
-    order_count = 1
-    current_weight = seed_order.weight
-    seed_address = seed_order.address
+    """Dispatch page: every Trip not yet completed. Ready (full or past deadline) first, then open, then out."""
+    now = datetime.now(timezone.utc)
+    if lock_due_trips(now):
+        db.session.commit()
 
-    #Mapbox directions/distance
-    token = current_app.config.get("MAPBOX_ACCESS_TOKEN")
-    if not token:
-        current_app.logger.warning("MAPBOX_ACCESS_TOKEN not set — directions disabled")
-        return None
-
-    profile = "driving" # walking also seems appropriate; need more details on bot
-
-    while order_count < MAX_ORDERS:
-        nearest = None
-        shortest_distance = 1000.0 #this max value should be well out of range
-        
-        for candidate in order_queue:
-            if (current_weight + candidate.weight <= MAX_WEIGHT):
-                #mapbox to calculate distance between points
-                coordinates = seed_address + ";" + candidate.address #for this, address stored as string "x,y"
-                url = f"https://api.mapbox.com/directions-matrix/v1/mapbox/{profile}/{coordinates}"
-                params = {
-                    "annotations": "distance,duration", # Returns both distance and time
-                    "access_token": token
-                }
-                #time potentially more useful; keeping it commented out for now
-
-                response = request.get(url, params=params)
-                data = response.json()
-
-                if response.status_code == 200:
-                    # 'distances' contains a 2D matrix of results in meters
-                    # From coordinates[0] to coordinates[1]:
-                    distance_meters = data["distances"][0][1] 
-                    #duration_seconds = data["durations"][0][1]
-                      
-                    #print(f"Distance: {distance_meters / 1000:.2f} km")
-                    #print(f"Travel Time: {duration_seconds / 60:.1f} minutes")
-                else:
-                    print("Error:", data.get("message"))
-                if distance_meters < shortest_distance:
-                    shortest_distance = distance_meters
-                    nearest = candidate
-        if nearest is None: # no more valid candidates
-            break
-        trip.add(nearest)
-        order_queue.remove(nearest)
-        order_count += 1
-        current_weight += nearest.weight
-        seed_address = nearest.address #calculate distance from newest address
-
-    #return Trip(trip)
-    #1 trip(list of destinations) or list of trips?
-    return jsonify(error="not_implemented"), 501 #not full implementation, so keeping this for now
+    rank = {READY: 0, OPEN: 1, DISPATCHED: 2}
+    trips = Trip.query.filter(Trip.status.in_(rank)).all()
+    trips.sort(key=lambda t: (rank[t.status], t.created_at, t.id))
+    return jsonify(trips=[_view(t, now) for t in trips])
 
 
-@bp.post("/<trip_id>/dispatch")
+@bp.post("/<int:trip_id>/dispatch")
+@staff_required
 def dispatch_trip(trip_id):
-    # Configure token and coordinates
-    token = current_app.config.get("MAPBOX_ACCESS_TOKEN")
-    if not token:
-        current_app.logger.warning("MAPBOX_ACCESS_TOKEN not set — directions disabled")
-        return None
-    profile = "driving" # walking also seems appropriate; need more details on bot
+    """An Employee confirms the Robot is loaded and sends the Trip out (CONTEXT.md "Dispatch")."""
+    trip = db.session.get(Trip, trip_id)
+    if trip is None:
+        return _error("not_found", "Trip not found.", 404)
+    if trip.status not in NOT_DISPATCHED:
+        return _error("invalid_transition", f"This trip is already {trip.status}.", 409)
+    if not trip.orders:
+        return _error("empty_trip", "This trip has no orders.", 409)
 
-    # Coordinates formatting: longitude,latitude separated by semicolons
-    # The first coordinate defaults as both the start and end (roundtrip)
-    '''
-    coordinates = [
-        "-122.42,37.78",  # Depot / Starting point
-        "-122.45,37.91",  # Stop 1
-        "-122.48,37.73",  # Stop 2
-        "-122.41,37.76"   # Stop 3
-    ]
-    '''
-    #above code kept as example for now
-    coordinates = []
-    trip = trip_dictionary.get(trip_id)
-    for destination in trip:
-        coordinates.add(destination.address)
-
-    coord_string = ";".join(coordinates)
-
-    # Build URL
-    url = f"https://api.mapbox.com/optimized-trips/v1/{profile}/{coord_string}"
-    params = {
-        "access_token": token,
-        "geometries": "geojson",  # Returns the route line for mapping
-        "overview": "full",
-        "roundtrip": "true"       # Returns driver to the first coordinate
-    }
-
-    response = request.get(url, params=params)
-
-    if response.status_code == 200:
-        data = response.json()
-        # Extract the sequence of optimized stops
-        waypoints = data.get("waypoints", [])
-        print("Optimized Waypoint Order:")
-        for wp in sorted(waypoints, key=lambda x: x["waypoint_index"]):
-            print(f"Stop Sequence {wp['waypoint_index']}: Location Index {wp['trips_index']}")
-            
-        # The actual spatial path to plot on your map
-        route_geometry = data["trips"][0]["geometry"]
-    else:
-        print(f"Error: {response.status_code}", response.text)
-
-
-    return jsonify(error="not_implemented"), 501 #kept because not full implementation
+    now = datetime.now(timezone.utc)
+    trip.status, trip.dispatched_at = DISPATCHED, now
+    for order in trip.orders:
+        order.status = OUT_FOR_DELIVERY
+    db.session.commit()
+    return jsonify(_view(trip, now))

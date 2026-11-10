@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 from ..extensions import db
+from ..timeutil import iso_utc
 
 # LLD 2 §2.4 Order Status. Cancelled is only reachable through a Manager Order Override (T20).
 PLACED, PLANNED, OUT_FOR_DELIVERY, DELIVERED = "placed", "planned", "out_for_delivery", "delivered"
@@ -14,6 +15,17 @@ def _now():
 
 class Order(db.Model):
     __tablename__ = "orders"
+    __table_args__ = (
+        db.CheckConstraint("status IN ('placed','planned','out_for_delivery','delivered','delivery_failed','manual_review','cancelled')", name="ck_orders_status"),
+        # The fee amount (BR-1) lives in Config.DELIVERY_FEE_AMOUNT, so the database only checks
+        # the arithmetic; repeating "$0 or $10" here would make a fee change need a migration too.
+        db.CheckConstraint("subtotal >= 0 AND delivery_fee >= 0 AND total = subtotal + delivery_fee", name="ck_orders_totals"),
+        # Every Order has at least one line, and products weigh > 0, so an Order never weighs 0.
+        # No upper bound: checkout blocks > 200 lb (BR-3), but Manual Review must still be able to hold one.
+        db.CheckConstraint("weight_lb > 0", name="ck_orders_weight"),
+        db.Index("ix_orders_user_created", "user_id", "created_at"),
+        db.Index("ix_orders_status_created", "status", "created_at"),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
@@ -48,13 +60,19 @@ class Order(db.Model):
             "deliveryAddress": self.delivery_address,
             "deliveryLat": self.delivery_lat,
             "deliveryLng": self.delivery_lng,
-            "createdAt": self.created_at.isoformat(),
+            "createdAt": iso_utc(self.created_at),
         }
 
 
 class OrderLine(db.Model):
     # Snapshot of the cart line at payment time: later price or name edits don't rewrite past orders.
     __tablename__ = "order_lines"
+    __table_args__ = (
+        db.CheckConstraint("quantity > 0", name="ck_order_lines_quantity"),
+        db.CheckConstraint("unit_price >= 0 AND weight_lb > 0", name="ck_order_lines_snapshot"),
+        db.Index("ix_order_lines_order", "order_id"),
+        db.Index("ix_order_lines_product", "product_id"),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False)

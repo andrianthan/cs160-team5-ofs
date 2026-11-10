@@ -4,7 +4,7 @@ import { LoginPage as SharedLoginPage } from "@ofs/shared/components";
 export default function LoginPage() {
     return (
         <SharedLoginPage
-            title="Welcome to OFS"
+            title="Welcome to Basil"
             subtitle="Organic groceries, delivered by robot."
             defaultRedirect="/browse"
             footer={

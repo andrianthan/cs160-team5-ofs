@@ -10,7 +10,7 @@ export default function AppHeader({
     width?: string;
 }) {
     return (
-        <header className="sticky top-0 z-40 border-b border-brand-100 bg-white/90 backdrop-blur">
+        <header className="sticky top-0 z-40 border-b border-brand-100 bg-cream-50/85 backdrop-blur">
             <div
                 className={`${width} relative mx-auto flex flex-wrap items-center justify-between gap-y-2 px-4 py-3`}
             >

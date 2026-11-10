@@ -6,6 +6,13 @@ OPTIONAL = {"description", "weightLb", "stock", "lowStockThreshold", "imageUrl",
 
 class Product(db.Model):
     __tablename__ = "products"
+    __table_args__ = (
+        db.CheckConstraint("price >= 0", name="ck_products_price"),
+        db.CheckConstraint("weight_lb > 0", name="ck_products_weight"),
+        db.CheckConstraint("stock_qty >= 0", name="ck_products_stock"),
+        db.CheckConstraint("low_stock_threshold >= 0", name="ck_products_threshold"),
+        db.Index("ix_products_active_category_name", "active", "category", "name"),
+    )
 
     product_id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(160), nullable=False)

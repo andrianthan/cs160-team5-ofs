@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { CartResult } from "../CartContext";
+import { CategoryThumb } from "@ofs/shared/components";
 import type { Product } from "@ofs/shared/products";
 
 type ProductDetailsProps = {
@@ -127,12 +128,7 @@ export default function ProductDetails({
                         className="aspect-square w-full rounded-2xl bg-brand-50 object-cover"
                     />
                 ) : (
-                    <div
-                        aria-hidden="true"
-                        className="flex aspect-square items-center justify-center rounded-2xl bg-brand-50 font-display text-7xl font-bold text-brand-700"
-                    >
-                        {product.name.charAt(0)}
-                    </div>
+                    <CategoryThumb category={product.category} name={product.name} className="aspect-square w-full rounded-2xl text-8xl" />
                 )}
 
                 <div className="flex flex-col gap-3">

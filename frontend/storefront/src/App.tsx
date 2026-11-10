@@ -3,6 +3,7 @@ import { AuthProvider, RequireAuth, useAuth } from "@ofs/shared/auth";
 import {
   AccountMenu,
   AppHeader,
+  BrandMark,
   NavPill,
   PageStub,
 } from "@ofs/shared/components";
@@ -24,7 +25,7 @@ function Nav() {
   return (
     <AppHeader
       width="max-w-5xl"
-      brand={<NavLink to="/browse">OFS</NavLink>}
+      brand={<NavLink to="/browse"><BrandMark /></NavLink>}
     >
       <NavPill to="/browse">Browse</NavPill>
       <CartMenu key={pathname} />

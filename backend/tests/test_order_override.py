@@ -1,7 +1,7 @@
+from decimal import Decimal
 
 from app.extensions import db
-from app.models import User
-
+from app.models import Order, OrderOverrideAudit, User
 PASSWORD = "johnathanpassword123"
 
 
@@ -53,11 +53,40 @@ def test_employee_cannot_override(app, client):
 
 
 
+
 def test_manager_can_access_override(app, client):
     login_as(client, app, "manager")
 
+    # Create a customer and an order.
+    with app.app_context():
+        customer = User(
+            email="ordercustomer@example.com",
+            name="Order Customer",
+            role="customer"
+        )
+        customer.set_password(PASSWORD)
+        db.session.add(customer)
+        db.session.flush()
+
+        order = Order(
+            user_id=customer.id,
+            status="placed",
+            subtotal=Decimal("10.00"),
+            delivery_fee=Decimal("2.00"),
+            total=Decimal("12.00"),
+            weight_lb=Decimal("2.00"),
+            delivery_address="1 Main St",
+            delivery_lat=37.33,
+            delivery_lng=-121.89
+        )
+
+        db.session.add(order)
+        db.session.commit()
+        order_id = order.id
+
+    # Manager requests cancellation.
     response = client.post(
-        "/api/orders/1/override",
+        f"/api/orders/{order_id}/override",
         json={
             "action": "cancel",
             "reason": "Customer requested cancellation",
@@ -65,8 +94,33 @@ def test_manager_can_access_override(app, client):
         }
     )
 
-    assert response.status_code == 501
-    assert response.get_json()["error"] == "not_implemented"
+    # Verify the API response.
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["status"] == "cancelled"
+    assert body["action"] == "cancel"
+    assert body["reason"] == "Customer requested cancellation"
+
+
+    # Verify the order was cancelled and audit record saved.
+    with app.app_context():
+        updated_order = db.session.get(Order, order_id)
+        assert updated_order.status == "cancelled"
+
+        audits = OrderOverrideAudit.query.filter_by(
+            order_id=order_id
+        ).all()
+
+        assert len(audits) == 1
+
+        audit = audits[0]
+        assert audit.action == "cancel"
+        assert audit.previous_status == "placed"
+        assert audit.new_status == "cancelled"
+        assert audit.reason == "Customer requested cancellation"
+        assert audit.manager_id is not None
+        assert audit.created_at is not None
+
 
 
 def test_override_missing_action(app, client):

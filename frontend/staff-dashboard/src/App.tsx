@@ -17,6 +17,7 @@ import {
 import InventoryPage from "./pages/InventoryPage";
 import OrderQueuePage from "./pages/OrderQueuePage";
 import ReportsPage from "./pages/ReportsPage";
+import DeliverySettingsPage from "./pages/DeliverySettingsPage";
 
 const STAFF_ROLES: UserRole[] = ["employee", "manager"];
 
@@ -31,7 +32,10 @@ function Nav() {
           <NavPill to="/dispatch">Dispatch</NavPill>
           <NavPill to="/inventory">Inventory</NavPill>
           {user.role === "manager" && (
-            <NavPill to="/reports">Reports</NavPill>
+              <>
+                <NavPill to="/reports">Reports</NavPill>
+                <NavPill to="/delivery-settings">Delivery Settings</NavPill>
+              </>
           )}
           <AccountMenu />
         </>
@@ -91,6 +95,14 @@ export default function App() {
               <RequireAuth roles={["manager"]}>
                 <ReportsPage />
               </RequireAuth>
+            }
+          />
+          <Route
+            path="/delivery-settings"
+            element={
+                <RequireAuth roles={["manager"]}>
+                    <DeliverySettingsPage />
+                </RequireAuth>
             }
           />
         </Routes>

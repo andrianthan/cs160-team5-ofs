@@ -5,7 +5,6 @@ import {
   AppHeader,
   BrandMark,
   NavPill,
-  PageStub,
 } from "@ofs/shared/components";
 
 import { CartProvider } from "./CartContext";
@@ -16,6 +15,7 @@ import BrowsePage from "./pages/BrowsePage";
 import CartPage from "./pages/CartPage";
 import CartMenu from "./components/CartMenu";
 import CheckOutPage from "./pages/CheckOutPage";
+import TrackOrdersPage from "./pages/TrackOrdersPage";
 
 function Nav() {
   const { user } = useAuth();
@@ -80,9 +80,9 @@ export default function App() {
             <Route
               path="/track"
               element={
-                <RequireAuth>
-                  <PageStub title="Track Orders" task="T16" owner="Jorge" />
-                </RequireAuth>
+                  <RequireAuth>
+                      <TrackOrdersPage />
+                  </RequireAuth>
               }
             />
           </Routes>

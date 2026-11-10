@@ -344,7 +344,12 @@ function OrderResult({ paymentId }: { paymentId: number }) {
     if (payment?.orderId) {
         return (
             <div className={box}>
-                <h1 className="text-2xl font-display font-bold">Order #{payment.orderId} placed</h1>
+                <Link
+                    to={`/track?orderId=${payment.orderId}`}
+                    className="inline-block bg-brand-600 text-white rounded-xl px-4 py-2 font-medium"
+                >
+                    Track your order
+                </Link>
                 <p className="text-sm text-brand-900/60">
                     Paid {money.format(payment.amountCents / 100)}. We'll start preparing it for delivery.
                 </p>

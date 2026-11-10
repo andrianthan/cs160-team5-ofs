@@ -13,15 +13,13 @@ from .cart import validate_cart_for_checkout
 from .. import notifications
 from ..config import Config
 from ..extensions import db
-from ..models import Cart, Order, OrderLine, Product, Trip
-from ..models import OrderOverrideAudit
+from ..models import Cart, Order, OrderLine, Product
 from ..models.order import (
-    DELIVERED, DELIVERY_FAILED, MANUAL_REVIEW, OUT_FOR_DELIVERY, PLACED, PLANNED, STATUSES, CANCELLED
+    DELIVERED, DELIVERY_FAILED, MANUAL_REVIEW, OUT_FOR_DELIVERY, PLACED, PLANNED, STATUSES,
 )
-from ..models.trip import NOT_DISPATCHED, OPEN
+from ..models.trip import NOT_DISPATCHED
 from ..planning import assign_to_trip, leave_trip
 from ..models.user import MANAGER
-
 
 bp = Blueprint("orders", __name__, url_prefix="/api/orders")
 
@@ -30,7 +28,7 @@ bp = Blueprint("orders", __name__, url_prefix="/api/orders")
 # Planned -> Out for Delivery through Dispatch, so no Order is ever Planned without a Trip.
 TRANSITIONS = {
     PLACED: {MANUAL_REVIEW},
-    PLANNED: {PLACED, MANUAL_REVIEW},  # taken back off its (still open) Trip
+    PLANNED: {PLACED, MANUAL_REVIEW},  # taken back off its Trip, while that hasn't been dispatched
     OUT_FOR_DELIVERY: {DELIVERED, DELIVERY_FAILED},
     DELIVERY_FAILED: {PLACED, MANUAL_REVIEW},
     MANUAL_REVIEW: {PLACED},
@@ -189,59 +187,12 @@ def override_order(order_id):
         return jsonify(error="INVALID_OVERRIDE"), 400
 
     # Step 4: Find the order.
-    order = db.session.get(Order, order_id)
-
-    if order is None:
-        return jsonify(error="ORDER_NOT_FOUND"), 404
+    # TODO: Connect to the Order model.
 
     # Step 5: Apply the approved override.
-    action = action.strip().lower()
-    reason = reason.strip()
+    # TODO: Validate action and current order status.
 
-    if action != "cancel":
-        return jsonify(error="INVALID_OVERRIDE_ACTION"), 400
+    # Step 6: Record the manager and reason.
+    # TODO: Save the audit record.
 
-    # Do not cancel completed or already cancelled orders.
-    if order.status in (DELIVERED, CANCELLED):
-        return jsonify(error="INVALID_ORDER_STATUS"), 409
-
-    # Do not cancel orders on an active delivery trip.
-    if order.trip_id is not None:
-        trip = db.session.get(Trip, order.trip_id)
-        if trip is not None and trip.status != OPEN:
-            return jsonify(error="INVALID_ORDER_STATUS"), 409
-
-    previous_status = order.status
-
-    # Remove the order from an open trip.
-    order.trip_id = None
-    order.status = CANCELLED
-
-
-    # Step 6: Create a persistent audit record.
-    audit = OrderOverrideAudit(
-        order_id=order.id,
-        manager_id=current_user.id,
-        action=action,
-        previous_status=previous_status,
-        new_status=order.status,
-        reason=reason
-    )
-
-    db.session.add(audit)
-
-    # Save the order update and audit record together.
-    db.session.commit()
-
-
-    notifications.notify_status_change(order)
-
-    return jsonify(
-        message="Order override successful",
-        orderId=order.id,
-        action=action,
-        previousStatus=previous_status,
-        status=order.status,
-        managerId=current_user.id,
-        reason=reason
-    ), 200
+    return jsonify(error="not_implemented"), 501

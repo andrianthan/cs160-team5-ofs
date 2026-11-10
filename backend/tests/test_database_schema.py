@@ -20,8 +20,7 @@ from app.models import Address, InventoryLog, Order, OrderLine, Payment, Product
 MIGRATIONS = str(Path(__file__).resolve().parents[1] / "migrations")
 DATABASES = ["sqlite"] + (["postgresql"] if os.getenv("TEST_POSTGRES_URL") else [])
 TABLES = {"users", "addresses", "products", "inventory_log", "carts", "cart_lines", "orders",
-          "order_lines", "payments", "robots", "trips", "trip_stops", "app_settings", "notifications", "alembic_version",
-          "delivery_settings", "order_override_audits"}
+          "order_lines", "payments", "robots", "trips", "trip_stops", "app_settings", "notifications", "alembic_version"}
 
 
 @pytest.fixture(params=DATABASES)
@@ -77,7 +76,7 @@ def migrate():
 def test_fresh_migration_matches_models(database_app):
     migrate()
     assert set(sa.inspect(db.engine).get_table_names()) == TABLES
-    assert db.session.execute(sa.text("SELECT version_num FROM alembic_version")).scalar() == "0003_manager_override_delivery_pause"
+    assert db.session.execute(sa.text("SELECT version_num FROM alembic_version")).scalar() == "0002_foundation"
     check(directory=MIGRATIONS)
     inspector = sa.inspect(db.engine)
     for table in db.metadata.sorted_tables:

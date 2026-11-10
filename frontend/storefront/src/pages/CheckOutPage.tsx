@@ -158,43 +158,11 @@ function CheckoutForm({ overweight, onPaid }: { overweight: boolean; onPaid: (pa
     const [paymentReady, setPaymentReady] = useState(false);
     const [paymentError, setPaymentError] = useState("");
     const [submitting, setSubmitting] = useState(false);
-    const [deliveryPaused, setDeliveryPaused] = useState(true);
 
     // one key per payment attempt, so a double click or retry never charges twice
     const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
     // the payment created for this attempt; reused after a declined card (re-POSTing the key returns no clientSecret)
     const created = useRef<{ payment: Payment; address: string } | null>(null);
-
-
-    useEffect(() => {
-        let active = true;
-
-        async function checkDeliveryStatus() {
-            try {
-                const result = await apiRequest<{ paused: boolean }>(
-                    "/api/settings/delivery-pause"
-                );
-
-                if (active) {
-                    setDeliveryPaused(result.ok ? result.data.paused : true);
-                }
-            } catch {
-                if (active) setDeliveryPaused(true);
-            }
-        }
-
-        void checkDeliveryStatus();
-
-        const timer = window.setInterval(
-            () => void checkDeliveryStatus(),
-            10000
-        );
-
-        return () => {
-            active = false;
-            window.clearInterval(timer);
-        };
-    }, []);
 
     const latest = useRef("");
     const validateAddress = async (rawAddress: string) => {
@@ -214,8 +182,7 @@ function CheckoutForm({ overweight, onPaid }: { overweight: boolean; onPaid: (pa
         }
     }
 
-    const canPay = Boolean(stripe && elements && paymentReady
-        && checked && !overweight && !submitting && !deliveryPaused);
+    const canPay = Boolean(stripe && elements && paymentReady && checked && !overweight && !submitting);
 
     const pay = async (e: FormEvent) => {
         e.preventDefault();
@@ -328,21 +295,8 @@ function CheckoutForm({ overweight, onPaid }: { overweight: boolean; onPaid: (pa
                 disabled={!canPay}
                 className="w-full bg-brand-600 hover:bg-brand-700 disabled:bg-brand-900/20 disabled:cursor-not-allowed text-white font-medium rounded-xl py-2.5 text-sm transition-colors duration-200 cursor-pointer"
             >
-                {deliveryPaused
-                    ? "Delivery Unavailable"
-                    : submitting
-                        ? "Processing…"
-                        : "Pay"}
+                {submitting ? "Processing…" : "Pay"}
             </button>
-            {deliveryPaused && (
-                <p
-                    role="alert"
-                    className="text-sm bg-amber-50 text-amber-900 border border-amber-200 rounded-xl px-3 py-2.5"
-                >
-                    Deliveries are currently unavailable. Checkout will be enabled
-                    when deliveries resume.
-                </p>
-            )}
             {!checked && !overweight && (
                 <p className="text-xs text-brand-900/50 text-center">Enter a delivery address in the Downtown San Jose zone to continue.</p>
             )}

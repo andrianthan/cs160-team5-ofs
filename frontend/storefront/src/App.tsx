@@ -16,7 +16,6 @@ import BrowsePage from "./pages/BrowsePage";
 import CartPage from "./pages/CartPage";
 import CartMenu from "./components/CartMenu";
 import CheckOutPage from "./pages/CheckOutPage";
-import DeliveryPauseNotice from "./components/DeliveryPauseNotice";
 
 function Nav() {
   const { user } = useAuth();
@@ -52,7 +51,6 @@ export default function App() {
       <AuthProvider portal="customer">
         <CartProvider>
           <Nav />
-          <DeliveryPauseNotice />
           <Routes>
             <Route path="/" element={<Navigate to="/browse" replace />} />
             <Route

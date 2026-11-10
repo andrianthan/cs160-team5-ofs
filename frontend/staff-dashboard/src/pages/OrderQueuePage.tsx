@@ -2,9 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 
 import { listOrders, prepareOrder, setOrderStatus, type Order, type OrderStatus } from "../api/orders";
 
-import { useAuth } from "@ofs/shared/auth";
-import { cancelOrderOverride } from "../api/orderOverride";
-
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
 const REFRESH_MS = 30_000; // new orders from the storefront show up without reloading the page
@@ -26,14 +23,7 @@ function ago(iso: string): string {
 }
 
 export default function OrderQueuePage() {
-    const { user } = useAuth();
-    const isManager = user?.role === "manager";
-
-    const [cancelOrder, setCancelOrder] = useState<Order | null>(null);
-    const [cancelReason, setCancelReason] = useState("");
-
     const [tab, setTab] = useState<OrderStatus>("placed");
-
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -94,43 +84,6 @@ export default function OrderQueuePage() {
             const r = await setOrderStatus(order.id, status);
             return r.ok ? { ok: true, message: `Order #${order.id} ${done}.` } : { ok: false, message: r.data.message };
         });
-
-
-
-    const confirmCancellation = async () => {
-        if (!cancelOrder || !isManager || busyId !== null) return;
-
-        const reason = cancelReason.trim();
-
-        if (!reason) {
-            setError("A cancellation reason is required.");
-            return;
-        }
-
-        const orderId = cancelOrder.id;
-
-        setBusyId(orderId);
-        setError(null);
-        setNotice(null);
-
-        try {
-            const result = await cancelOrderOverride(orderId, reason);
-
-            if (!result.ok) {
-                setError(result.data.message);
-                return;
-            }
-
-            setNotice(`Order #${orderId} canceled successfully.`);
-            setCancelOrder(null);
-            setCancelReason("");
-            await refresh();
-        } catch {
-            setError("Unable to cancel the order. Please try again.");
-        } finally {
-            setBusyId(null);
-        }
-    };
 
     const current = TABS.find((t) => t.status === tab)!;
     const button = "px-3 py-1.5 rounded-full text-sm font-medium cursor-pointer disabled:opacity-50 transition-colors duration-200";
@@ -201,20 +154,6 @@ export default function OrderQueuePage() {
                                     </div>
 
                                     <div className="flex flex-wrap gap-2">
-                                        {isManager && (
-                                            <button
-                                                type="button"
-                                                disabled={busy}
-                                                onClick={() => {
-                                                    setCancelOrder(order);
-                                                    setCancelReason("");
-                                                    setError(null);
-                                                }}
-                                                className={`${button} bg-red-50 text-red-700 hover:bg-red-100`}
-                                            >
-                                                Cancel Order
-                                            </button>
-                                        )}
                                         {order.status === "placed" && (
                                             <>
                                                 <button
@@ -271,80 +210,6 @@ export default function OrderQueuePage() {
                         );
                     })}
                 </ul>
-            )}
-
-            {cancelOrder && isManager && (
-                <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-                    role="presentation"
-                >
-                    <div
-                        role="dialog"
-                        aria-modal="true"
-                        aria-labelledby="cancel-order-title"
-                        className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl space-y-4"
-                    >
-                        <h2
-                            id="cancel-order-title"
-                            className="text-xl font-semibold"
-                        >
-                            Cancel Order #{cancelOrder.id}
-                        </h2>
-
-                        <p className="text-sm text-brand-900/70">
-                            This action will cancel the order and record the
-                            manager's reason in the audit log.
-                        </p>
-
-                        <div>
-                            <label
-                                htmlFor="cancel-reason"
-                                className="block text-sm font-medium mb-2"
-                            >
-                                Cancellation reason
-                            </label>
-
-                            <textarea
-                                id="cancel-reason"
-                                value={cancelReason}
-                                onChange={(e) => setCancelReason(e.target.value)}
-                                rows={3}
-                                maxLength={500}
-                                placeholder="Enter the reason for cancellation"
-                                className="w-full rounded-xl border border-brand-200 px-3 py-2 text-sm"
-                            />
-                        </div>
-
-                        {error && (
-                            <p role="alert" className="text-sm text-red-600">
-                                {error}
-                            </p>
-                        )}
-
-                        <div className="flex justify-end gap-3">
-                            <button
-                                type="button"
-                                disabled={busyId !== null}
-                                onClick={() => {
-                                    setCancelOrder(null);
-                                    setCancelReason("");
-                                }}
-                                className="rounded-xl border border-brand-200 px-4 py-2 text-sm"
-                            >
-                                Go Back
-                            </button>
-
-                            <button
-                                type="button"
-                                disabled={!cancelReason.trim() || busyId !== null}
-                                onClick={() => void confirmCancellation()}
-                                className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-                            >
-                                {busyId !== null ? "Canceling..." : "Confirm Cancellation"}
-                            </button>
-                        </div>
-                    </div>
-                </div>
             )}
         </main>
     );

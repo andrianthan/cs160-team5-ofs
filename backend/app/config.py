@@ -10,6 +10,21 @@ class Config:
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
+    # Connection pool for a remote PostgreSQL (Supabase). create_app() applies these only to
+    # postgresql:// URLs; SQLite (local demo.db, the in-memory test DB) doesn't use a pool like this.
+    POSTGRES_ENGINE_OPTIONS = {
+        # Test each pooled connection before reusing it. Supabase closes idle connections, and
+        # without this the first request after a quiet spell fails with "server closed the
+        # connection unexpectedly".
+        "pool_pre_ping": True,
+        # Replace connections older than 5 minutes before the server drops them.
+        "pool_recycle": 300,
+        # At most 5 connections per backend process (default is 15). Supabase's free tier allows
+        # only a few dozen in total, shared by every teammate's backend and the email threads.
+        "pool_size": 3,
+        "max_overflow": 2,
+    }
+
     STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY")
     STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET")
     MAPBOX_ACCESS_TOKEN = os.environ.get("MAPBOX_ACCESS_TOKEN")

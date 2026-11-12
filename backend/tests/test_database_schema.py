@@ -76,7 +76,7 @@ def migrate():
 def test_fresh_migration_matches_models(database_app):
     migrate()
     assert set(sa.inspect(db.engine).get_table_names()) == TABLES
-    assert db.session.execute(sa.text("SELECT version_num FROM alembic_version")).scalar() == "0002_foundation"
+    assert db.session.execute(sa.text("SELECT version_num FROM alembic_version")).scalar() == "0003_enable_rls"
     check(directory=MIGRATIONS)
     inspector = sa.inspect(db.engine)
     for table in db.metadata.sorted_tables:
@@ -190,3 +190,23 @@ def test_trip_can_be_ready(database_app):
     db.session.add(Trip(status="ready", ready_reason="full"))
     db.session.commit()
     assert Trip.query.one().status == "ready"
+
+
+def test_every_table_has_row_level_security(database_app):
+    # Supabase's web API can reach every table with the public anon key; RLS (no policies) blocks it.
+    # A new table without RLS fails here, so CI catches a migration that forgets it.
+    if db.engine.dialect.name != "postgresql":
+        pytest.skip("RLS is PostgreSQL-only")
+    migrate()
+    rows = db.session.execute(sa.text(
+        "SELECT c.relname, c.relrowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
+        "WHERE n.nspname = current_schema() AND c.relkind = 'r'"
+    )).all()
+    assert rows and [name for name, secured in rows if not secured] == []
+
+
+def test_owner_still_reads_and_writes_with_rls_on(database_app):
+    # The app connects as the tables' owner, which RLS doesn't apply to: the lock must not lock us out.
+    migrate()
+    add_test_rows()
+    assert User.query.filter_by(email="customer@example.com").one().name == "Test Customer"

@@ -73,12 +73,23 @@ Already have a `.venv`? Re-run `pip install -r requirements.txt` after pulling. 
 pinned to 2.0.x because 2.1 looks for the `psycopg` driver instead of our `psycopg2`.
 
 **DB (Supabase):** one shared Supabase project for the whole team — don't each spin up your own.
-Whoever has it (currently: T02 owner) posts the connection string in the team chat, not committed
-anywhere. Project Settings → Database → Connection string → URI, then:
+The project owner sends you the connection string privately (never committed, never in a group
+channel). In the Supabase dashboard it's under **Connect → Connection string → Method: Session pooler**:
 ```
-DATABASE_URL=postgresql://postgres:[YOUR-PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres
+DATABASE_URL=postgresql://postgres.[PROJECT-REF]:[DB-PASSWORD]@aws-0-[REGION].pooler.supabase.com:5432/postgres?sslmode=require
 ```
-goes in your own local `.env` (never `.env.example`, never committed — it's gitignored already).
+goes in your own local `backend/.env` (gitignored). Use the **Session pooler**, not "Direct
+connection": the direct `db.[PROJECT-REF].supabase.co` address needs IPv6, which many networks lack.
+`?sslmode=require` encrypts the connection. Use a letters-and-digits DB password; `@ # / %` break the URL.
+
+- `python run.py` prints ` * Database: ...` on start. A `DATABASE_URL` exported in your terminal
+  **overrides** `.env`, so check that line if your changes don't show up in Supabase.
+- The tables already exist on the shared project; only the owner runs `python seed_demo.py` there.
+  After a PR with a new migration merges, the owner runs `flask --app app:create_app db upgrade` once.
+- Every table has row-level security on (migration `0003_enable_rls`), so Supabase's public API key
+  can't read or change anything; our backend connects as the table owner and isn't affected.
+- For a private local database instead, point `DATABASE_URL` at it (e.g. `sqlite:///demo.db`) and
+  run `python seed_demo.py`.
 
 **Payments (Stripe test mode):** free, no card needed. Sign up at dashboard.stripe.com, stay in
 test mode / sandbox, then Developers → API keys → copy the `sk_test_...` secret key into

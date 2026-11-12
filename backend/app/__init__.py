@@ -1,4 +1,5 @@
 from flask import Flask, jsonify
+from sqlalchemy.engine import make_url
 
 from .config import Config
 from .extensions import db, migrate, cors, login_manager
@@ -7,6 +8,9 @@ from .extensions import db, migrate, cors, login_manager
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
+    # The URI may be a string or a SQLAlchemy URL object (the migration tests pass one).
+    if make_url(app.config["SQLALCHEMY_DATABASE_URI"]).get_backend_name() == "postgresql":
+        app.config.setdefault("SQLALCHEMY_ENGINE_OPTIONS", app.config["POSTGRES_ENGINE_OPTIONS"])
 
     db.init_app(app)
     migrate.init_app(app, db)

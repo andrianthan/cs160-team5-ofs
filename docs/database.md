@@ -88,6 +88,25 @@ Order numbers/status audit history, richer profile fields, and optional address
 linking need agreement with their feature owners before changing the API contract.
 The LLD should be reconciled with these decisions before final submission.
 
+## Supabase
+
+The team's shared database is a Supabase PostgreSQL project; see the README for connecting.
+
+- **Row-level security:** `0003_enable_rls` turns RLS on for every table, with no policies.
+  Supabase's Data API (reachable with the public anon key) then sees no rows and can't write;
+  the backend connects as the tables' owner, which RLS doesn't apply to. A new table must enable
+  RLS in its own migration (`ALTER TABLE ... ENABLE ROW LEVEL SECURITY`), and
+  `test_every_table_has_row_level_security` fails on PostgreSQL if it doesn't. Views and database
+  functions run with their owner's rights and would bypass RLS, so don't add one without a review.
+  Disabling the Data API in the dashboard (Project Settings → Data API) is a second layer.
+- **Connections:** `Config.POSTGRES_ENGINE_OPTIONS` checks pooled connections before reuse
+  (Supabase drops idle ones) and caps each backend process at 5, since the free tier's
+  connection limit is shared by every teammate.
+- **Changing the schema:** only run `db upgrade` against Supabase after the migration is merged
+  to main, or teammates' code won't match the shared tables.
+- **Testing on PostgreSQL:** `TEST_POSTGRES_URL=<url> pytest tests/test_database_schema.py` works
+  against Supabase too; each test uses a throwaway `ofs_test_*` schema and drops it.
+
 ## Verification
 
 ```sh

@@ -106,8 +106,13 @@ connection string privately. In the Supabase dashboard it's under
 DATABASE_URL=postgresql://postgres.[PROJECT-REF]:[DB-PASSWORD]@aws-0-[REGION].pooler.supabase.com:5432/postgres?sslmode=require
 ```
 Use the **Session pooler**, not "Direct connection" (the direct `db.[PROJECT-REF].supabase.co`
-address needs IPv6, which many networks lack). The tables and demo data already exist there:
-**don't run the seed** against the shared database.
+address needs IPv6, which many networks lack). `?sslmode=require` encrypts the connection.
+The tables and demo data already exist there: **don't run the seed** against the shared database.
+
+Every table has row-level security on (migration `0003_enable_rls`), so Supabase's public API key
+can't read or change anything; the backend connects as the tables' owner and isn't affected.
+Project owner: give the database a letters-and-digits password (`@ # / %` break the URL), and run
+`flask --app app:create_app db upgrade` once after any PR with a new migration merges.
 
 **B. A private local database (works offline, your own data).** Set
 ```
@@ -115,8 +120,7 @@ DATABASE_URL=sqlite:///demo.db
 ```
 then create the tables and demo data (the file lands in `backend/instance/demo.db`):
 ```
-set -a; source .env; set +a      # load .env into this terminal
-python seed_demo.py
+python seed_demo.py              # reads backend/.env and prints which database it's seeding
 ```
 To start over, delete `backend/instance/demo.db` and run the seed again.
 
@@ -195,7 +199,8 @@ If the pull added a migration (a new file in `backend/migrations/versions/`):
 
 ### Troubleshooting
 
-- *My changes don't show up in Supabase.* A `DATABASE_URL` set in your terminal (e.g. from
+- *My changes don't show up in Supabase.* Check the ` * Database: ...` line `python run.py` prints on
+  start (password hidden). A `DATABASE_URL` set in your terminal (e.g. from
   `export DATABASE_URL=...`) overrides `backend/.env`. Run `unset DATABASE_URL` or open a new
   terminal, then restart the backend.
 - *"table ... already exists" or "was created before migrations existed" when seeding.* The

@@ -1,17 +1,23 @@
-"""Create local demo users, products, and a saved customer cart.
-    export DATABASE_URL=sqlite:///demo.db
-    python seed_demo.py
+"""Create the tables (via migrations) plus demo users, products, and a saved customer cart.
+
+Uses DATABASE_URL from backend/.env, like run.py does; a DATABASE_URL set in the terminal wins:
+    python seed_demo.py                                   # whatever .env points at
+    DATABASE_URL=sqlite:///demo.db python seed_demo.py    # one-off local SQLite
 """
 import sys
 from decimal import Decimal
 from pathlib import Path
 
 import sqlalchemy as sa
+from dotenv import load_dotenv
 from flask_migrate import upgrade
 
-from app import create_app
-from app.extensions import db
-from app.models import Cart, CartLine, Product, User
+# Read backend/.env before importing the app: Config reads DATABASE_URL when it's imported.
+load_dotenv(Path(__file__).resolve().parent / ".env")
+
+from app import create_app  # noqa: E402
+from app.extensions import db  # noqa: E402
+from app.models import Cart, CartLine, Product, User  # noqa: E402
 
 DEMO_USERS = [
     ("customer@example.com", "Casey Customer", "customer", "customer123"),
@@ -40,6 +46,7 @@ DEMO_CART = {
 MIGRATIONS = Path(__file__).resolve().parent / "migrations"
 
 app = create_app()
+print(f"Seeding {sa.engine.make_url(app.config['SQLALCHEMY_DATABASE_URI']).render_as_string(hide_password=True)}")
 with app.app_context():
     # Build the schema through the migrations, not db.create_all(): that leaves the database
     # versioned (alembic_version), so a later `flask db upgrade` applies only what's new.

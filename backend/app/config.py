@@ -1,5 +1,8 @@
 import os
 
+from dotenv import load_dotenv
+
+load_dotenv()
 
 class Config:
     """Base config, read from environment. See .env.example for the full list."""

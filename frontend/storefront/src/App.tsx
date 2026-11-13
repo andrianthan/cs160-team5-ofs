@@ -1,3 +1,4 @@
+import TrackOrdersPage from "./pages/TrackOrdersPage";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, NavLink } from "react-router-dom";
 import { AuthProvider, RequireAuth, useAuth } from "@ofs/shared/auth";
 import {
@@ -5,7 +6,6 @@ import {
   AppHeader,
   BrandMark,
   NavPill,
-  PageStub,
 } from "@ofs/shared/components";
 
 import { CartProvider } from "./CartContext";
@@ -81,7 +81,7 @@ export default function App() {
               path="/track"
               element={
                 <RequireAuth>
-                  <PageStub title="Track Orders" task="T16" owner="Jorge" />
+                  <TrackOrdersPage />
                 </RequireAuth>
               }
             />

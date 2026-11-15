@@ -60,7 +60,9 @@ def inside_delivery_zone(geo):
 
 @bp.post("/validate")
 def validate_address():
-    data = request.get_json(silent=True) or {}
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):  # a JSON string, number or list was a 500 (AttributeError on .get)
+        data = {}
     address = data.get("address")
     address = address.strip() if isinstance(address, str) else ""
 

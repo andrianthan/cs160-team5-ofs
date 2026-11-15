@@ -38,12 +38,13 @@ def _period():
             if request.args.get("from")
             else end_day - timedelta(days=DEFAULT_DAYS)
         )
-    except ValueError:
+        end_exclusive = end_day + timedelta(days=1)
+    except (ValueError, OverflowError):  # OverflowError: to=9999-12-31 has no next day (was a 500)
         return None, (jsonify(error="bad_date", message="Dates must be YYYY-MM-DD."), 400)
     if start_day > end_day:
         return None, (jsonify(error="bad_range", message="'from' must not be after 'to'."), 400)
     start = datetime.combine(start_day, time.min, tzinfo=timezone.utc)
-    end = datetime.combine(end_day + timedelta(days=1), time.min, tzinfo=timezone.utc)
+    end = datetime.combine(end_exclusive, time.min, tzinfo=timezone.utc)
     return (start, end, start_day, end_day), None
 
 

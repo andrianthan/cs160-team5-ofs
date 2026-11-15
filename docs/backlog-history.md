@@ -44,7 +44,7 @@ Status is as of `origin/main` as of 2026-11-12. Date Started and Date Finished a
 | T13 | Delivery Planning, trip grouping | Ethan | Kelvin (real logic), Ethan (placeholder) | 2026-10-14 | 2026-11-04 | Mostly done. See notes. |
 | T14 | Route Optimizer (Mapbox) | Ethan | Ethan | 2026-11-02 | 2026-11-02 | Placeholder only. |
 | T15 | Simulated robot fleet service | Ethan | Ethan | 2026-11-12 | 2026-11-12 | Partial, on unmerged branch `t15-fleet-sim` only. |
-| T16 | Order Tracking and live map | Jorge | Jorge | 2026-10-06 | 2026-11-12 | Done. |
+| T16 | Order Tracking and live map | Jorge | Jorge | 2026-10-06 | 2026-11-12 | Partial on `main`: backend tracking endpoint only. The live map UI is not on `main` (see notes). |
 | T17 | Notifications over SMTP | Jorge | Andrian | 2026-11-04 | 2026-11-04 | Done. |
 | T18 | Staff Dashboard UI | Kelvin | Kelvin (Andrian: branding, reports page) | 2026-10-26 | 2026-11-04 | Partial. |
 | T19 | Manager Reports | Andrian | Andrian | 2026-11-03 | 2026-11-03 | Done. |
@@ -142,7 +142,8 @@ Status is as of `origin/main` as of 2026-11-12. Date Started and Date Finished a
 - 2026-10-06 Jorge: robot tracking and ETA in the UI prototype.
 - 2026-10-21 Jorge: tracking endpoint and tests (committed twice, `b41e579` and `12973de`).
 - 2026-11-10 Jorge: full implementation with live robot map (`0fd6b9e`).
-- 2026-11-12 Jorge: "fully completed manager override and tracking" (`0ccbde0`), now in `main`: tracking endpoint, tests, storefront map dependencies.
+- 2026-11-12 Jorge: "fully completed manager override and tracking" (`0ccbde0`), now in `main`: tracking endpoint, tests, storefront map dependencies, and an import of `TrackOrdersPage` in the storefront `App.tsx`.
+- The map UI itself (`RobotMap.tsx`, `TrackOrdersPage.tsx`) was only in `0fd6b9e` on `origin/t16-order-tracking` and was never merged. `main` imports a page file that does not exist there, so the storefront will not build until those files are merged.
 - T15 is not merged, so tracking has no real simulated robot positions to consume yet.
 
 ### T17 Notifications over SMTP (assigned: Jorge)

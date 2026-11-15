@@ -19,9 +19,9 @@ Source of the history: `git log --all` on `cs160-team5-ofs`, 101 commits, 2026-0
 | Jorge Nateras | Jorge Nateras, Jorge | 11 | 9 |
 | Anuj Sharma | AnujSharma837 | 3 | 3 |
 | Ethan Notario Rodriguez | Ethan Notario | 4 | 3 |
-| Shresthkumar Karnani | none | 0 | 0 |
+| Shresthkumar Karnani | Shresthkumar Karnani | 3 | 3 |
 
-Karnani has no commits under any name in this repo. T04, T05 and T12 were assigned to Karnani, and Kelvin built them. If Karnani worked on something that was never committed, it can't be credited from git.
+T04, T05 and T12 were assigned to Karnani. Kelvin built T04 and the first versions of T05 and T12. Karnani built the T05/T12 inventory log and the T12 customer order history page on 2026-11-14, on branch `shresth/t05-t12-inventory-log-order-history` (not yet merged, so after the 2026-11-12 snapshot used for the status column).
 
 ## Backlog with status
 
@@ -33,14 +33,14 @@ Status below comes from reading the code on `origin/main` (2026-11-12) and runni
 | T02 | PostgreSQL schema and migrations | Anuj | Anuj, then Kelvin | 2026-11-04 | 2026-11-11 | Done. Alembic migrations, all tables, CI check, RLS migration. |
 | T03 | Seed data, organic catalog | Anuj | Kelvin, Anuj | 2026-09-30 | 2026-11-11 | Done. |
 | T04 | Auth and Roles backend | Karnani | Kelvin | 2026-09-30 | 2026-09-30 | Done. Register, login, logout, hashed passwords, role gating. |
-| T05 | Catalog and Inventory backend | Karnani | Kelvin | 2026-10-07 | 2026-10-29 | Partial. Product list, create, edit, delete work. Nothing writes `inventory_log`, so the "log every sale, restock, return or correction" requirement is unmet. |
+| T05 | Catalog and Inventory backend | Karnani | Kelvin, Karnani | 2026-10-07 | 2026-11-14 | Partial. Product list, create, edit, delete work. Nothing writes `inventory_log`, so the "log every sale, restock, return or correction" requirement is unmet. |
 | T06 | Storefront shell, routing, auth screens | Kelvin | Kelvin | 2026-09-30 | 2026-10-26 | Done. |
 | T07 | Browse, search, product pages | Kelvin | Kelvin | 2026-10-06 | 2026-10-28 | Done. Search, categories, weight shown. |
 | T08 | Cart and Pricing backend | Andrian | Andrian | 2026-10-13 | 2026-10-28 | Done. Server-side weight, fee, overweight check. |
 | T09 | Cart UI, live weight and fee | Kelvin | Kelvin | 2026-10-14 | 2026-10-21 | Done. |
 | T10 | Payments with Stripe test mode | Andrian | Andrian, Kelvin | 2026-10-13 | 2026-11-03 | Done. Idempotency keys, webhook, cancel, refund. |
 | T11 | Address validation, delivery zone | Andrian | Andrian, Kelvin | 2026-10-04 | 2026-11-04 | Done. |
-| T12 | Orders creation and status lifecycle | Karnani | Kelvin | 2026-11-02 | 2026-11-12 | Mostly done. Order creation, transitions, stock decrement. No customer order-history page and no customer self-cancel in the storefront. |
+| T12 | Orders creation and status lifecycle | Karnani | Kelvin, Karnani | 2026-11-02 | 2026-11-14 | Mostly done. Order creation, transitions, stock decrement. No customer order-history page and no customer self-cancel in the storefront. |
 | T13 | Delivery Planning, trip grouping | Ethan | Kelvin | 2026-10-14 | 2026-11-04 | Mostly done. Grouping, 10-order and 200 lb limits, 30-minute lock, `/api/trips` and dispatch. No route optimizer or robot queue. |
 | T14 | Route Optimizer (Mapbox) | Ethan | Ethan (draft, since overwritten) | 2026-11-02 | 2026-11-02 | Not on `main`. Ethan's draft in `trips.py` was replaced by Kelvin's trip code. No Mapbox Optimization call exists. |
 | T15 | Simulated robot fleet service | Ethan | Ethan | 2026-11-12 | 2026-11-12 | Not on `main`. "partial T15" is on `origin/t15-fleet-sim` only. |
@@ -93,7 +93,7 @@ Summary: 10 done (T02, T03, T04, T06, T07, T08, T09, T10, T11, T17), 8 partial o
 - 2026-10-07 Kelvin: Product model and API (`1a2b81d`).
 - 2026-10-12 Kelvin: product API and tests (`016554e`).
 - 2026-10-27 to 2026-10-29 Kelvin: staff product editing, employee view of all products including inactive, create and delete product, auto-deactivate out-of-stock items.
-- No Karnani commits.
+- 2026-11-14 Karnani: every Stock change writes `inventory_log` in the same transaction (RESTOCK / RETURN / CORRECTION on Manager edits, SALE on checkout, CANCEL on Order Override), `GET /api/products/<id>/inventory-log`, products with orders or Stock history can only be deactivated (`e72987c`, branch `shresth/t05-t12-inventory-log-order-history`, not merged).
 
 ### T06 Storefront shell and auth screens (assigned: Kelvin)
 - 2026-09-30 Kelvin: login and register pages.
@@ -128,7 +128,7 @@ Summary: 10 done (T02, T03, T04, T06, T07, T08, T09, T10, T11, T17), 8 partial o
 ### T12 Orders creation and status lifecycle (assigned: Karnani)
 - 2026-11-02 Kelvin: order creation from paid carts, order routes, tests (`fbe3ccd`).
 - 2026-10-21 Jorge: authorization and validation tests for the override endpoint in `orders.py`.
-- No Karnani commits.
+- 2026-11-14 Karnani: SALE log on order creation; a cancelled Order's items go back into Stock with a CANCEL log (`e72987c`). Customer order history page `/orders` in the storefront (`bce268d`). Branch `shresth/t05-t12-inventory-log-order-history`, not merged.
 
 ### T13 Delivery Planning and trip grouping (assigned: Ethan)
 - 2026-10-14 Ethan: T13 with placeholder values in `trips.py`.

@@ -25,30 +25,37 @@ Karnani has no commits under any name in this repo. T04, T05 and T12 were assign
 
 ## Backlog with status
 
-Status is as of `origin/main` as of 2026-11-12. Date Started and Date Finished are the first and last commits that touched the task, not planned dates.
+Status below comes from reading the code on `origin/main` (2026-11-12) and running it: backend `pytest` gives 271 passed, 1 skipped; `tsc` on the storefront fails (see T16). Date Started and Date Finished are the first and last commits that touched the task, not planned dates.
 
-| ID | Task | Assigned | Built by (from git) | Started | Finished | Status |
+| ID | Task | Assigned | Built by (from git) | Started | Finished | Status on `main` |
 |---|---|---|---|---|---|---|
-| T01 | Repo and deployment skeleton | Anuj | Andrian (skeleton), Kelvin (README, requirements) | 2026-09-29 | 2026-10-04 | Done for repo, frontends and Flask. Apache and gunicorn config are not in git, so unverified. |
-| T02 | PostgreSQL schema and migrations | Anuj | Anuj, then Kelvin | 2026-11-04 | 2026-11-11 | Done. Migrations 0001 and 0002 (Anuj, PR #7), 0003 RLS and pool settings (Kelvin). |
+| T01 | Repo and deployment skeleton | Anuj | Andrian, Kelvin | 2026-09-29 | 2026-10-04 | Partial. Repo, both frontends, Flask and gunicorn dependency are in. No Apache config; the README says Apache is "not yet set up". |
+| T02 | PostgreSQL schema and migrations | Anuj | Anuj, then Kelvin | 2026-11-04 | 2026-11-11 | Done. Alembic migrations, all tables, CI check, RLS migration. |
 | T03 | Seed data, organic catalog | Anuj | Kelvin, Anuj | 2026-09-30 | 2026-11-11 | Done. |
-| T04 | Auth and Roles backend | Karnani | Kelvin | 2026-09-30 | 2026-09-30 | Done. |
-| T05 | Catalog and Inventory backend | Karnani | Kelvin | 2026-10-07 | 2026-10-29 | Done. |
-| T06 | Storefront shell, routing, auth screens | Kelvin | Kelvin (Andrian: TypeScript migration) | 2026-09-30 | 2026-10-26 | Done. |
-| T07 | Browse, search, product pages | Kelvin | Kelvin | 2026-10-06 | 2026-10-28 | Done. |
-| T08 | Cart and Pricing backend | Andrian | Andrian (Kelvin: one bug fix) | 2026-10-13 | 2026-10-28 | Done. |
+| T04 | Auth and Roles backend | Karnani | Kelvin | 2026-09-30 | 2026-09-30 | Done. Register, login, logout, hashed passwords, role gating. |
+| T05 | Catalog and Inventory backend | Karnani | Kelvin | 2026-10-07 | 2026-10-29 | Partial. Product list, create, edit, delete work. Nothing writes `inventory_log`, so the "log every sale, restock, return or correction" requirement is unmet. |
+| T06 | Storefront shell, routing, auth screens | Kelvin | Kelvin | 2026-09-30 | 2026-10-26 | Done. |
+| T07 | Browse, search, product pages | Kelvin | Kelvin | 2026-10-06 | 2026-10-28 | Done. Search, categories, weight shown. |
+| T08 | Cart and Pricing backend | Andrian | Andrian | 2026-10-13 | 2026-10-28 | Done. Server-side weight, fee, overweight check. |
 | T09 | Cart UI, live weight and fee | Kelvin | Kelvin | 2026-10-14 | 2026-10-21 | Done. |
-| T10 | Payments with Stripe test mode | Andrian | Andrian, then Kelvin | 2026-10-13 | 2026-11-03 | Done. |
-| T11 | Address validation, delivery zone | Andrian | Andrian (Kelvin: checkout autofill) | 2026-10-04 | 2026-11-04 | Done. |
-| T12 | Orders creation and status lifecycle | Karnani | Kelvin | 2026-11-02 | 2026-11-02 | Done except override endpoint, which is T20. |
-| T13 | Delivery Planning, trip grouping | Ethan | Kelvin (real logic), Ethan (placeholder) | 2026-10-14 | 2026-11-04 | Mostly done. See notes. |
-| T14 | Route Optimizer (Mapbox) | Ethan | Ethan | 2026-11-02 | 2026-11-02 | Placeholder only. |
-| T15 | Simulated robot fleet service | Ethan | Ethan | 2026-11-12 | 2026-11-12 | Partial, on unmerged branch `t15-fleet-sim` only. |
-| T16 | Order Tracking and live map | Jorge | Jorge | 2026-10-06 | 2026-11-12 | Partial on `main`: backend tracking endpoint only. The live map UI is not on `main` (see notes). |
-| T17 | Notifications over SMTP | Jorge | Andrian | 2026-11-04 | 2026-11-04 | Done. |
-| T18 | Staff Dashboard UI | Kelvin | Kelvin (Andrian: branding, reports page) | 2026-10-26 | 2026-11-04 | Partial. |
-| T19 | Manager Reports | Andrian | Andrian | 2026-11-03 | 2026-11-03 | Done. |
-| T20 | Delivery Pause and Order Override | Jorge | Jorge | 2026-10-21 | 2026-11-12 | Done. |
+| T10 | Payments with Stripe test mode | Andrian | Andrian, Kelvin | 2026-10-13 | 2026-11-03 | Done. Idempotency keys, webhook, cancel, refund. |
+| T11 | Address validation, delivery zone | Andrian | Andrian, Kelvin | 2026-10-04 | 2026-11-04 | Done. |
+| T12 | Orders creation and status lifecycle | Karnani | Kelvin | 2026-11-02 | 2026-11-12 | Mostly done. Order creation, transitions, stock decrement. No customer order-history page and no customer self-cancel in the storefront. |
+| T13 | Delivery Planning, trip grouping | Ethan | Kelvin | 2026-10-14 | 2026-11-04 | Mostly done. Grouping, 10-order and 200 lb limits, 30-minute lock, `/api/trips` and dispatch. No route optimizer or robot queue. |
+| T14 | Route Optimizer (Mapbox) | Ethan | Ethan (draft, since overwritten) | 2026-11-02 | 2026-11-02 | Not on `main`. Ethan's draft in `trips.py` was replaced by Kelvin's trip code. No Mapbox Optimization call exists. |
+| T15 | Simulated robot fleet service | Ethan | Ethan | 2026-11-12 | 2026-11-12 | Not on `main`. "partial T15" is on `origin/t15-fleet-sim` only. |
+| T16 | Order Tracking and live map | Jorge | Jorge | 2026-10-06 | 2026-11-12 | Partial. Backend endpoint with ownership check is in. Map UI is missing and the storefront does not typecheck (see below). |
+| T17 | Notifications over SMTP | Jorge | Andrian | 2026-11-04 | 2026-11-04 | Done for status-change emails with dedup and retry. Not checked against a real SMTP server. |
+| T18 | Staff Dashboard UI | Kelvin | Kelvin, Andrian | 2026-10-26 | 2026-11-04 | Partial. Inventory, prep queue, reports are in. Dispatch route is a placeholder stub; no scan/load flow, no trip map. |
+| T19 | Manager Reports | Andrian | Andrian | 2026-11-03 | 2026-11-03 | Partial. Sales, inventory snapshot, delivery success rate. No stock adjustment history (no log), and I found no trip utilization metric. |
+| T20 | Delivery Pause and Order Override | Jorge | Jorge | 2026-10-21 | 2026-11-12 | Partial. Pause API works and blocks payment creation. Override supports cancel with a required reason. The pause settings page and the storefront pause notice are not on `main`. |
+
+Summary: 9 done (T02, T03, T04, T06–T11), 9 partial or mostly done (T01, T05, T12, T13, T16, T17 as noted, T18, T19, T20), 2 not on `main` (T14, T15). T17 is counted in the done list in spirit; adjust to taste.
+
+### Known problems on `main`
+- The storefront fails `tsc`: `src/App.tsx` imports `./pages/TrackOrdersPage`, which does not exist on `main`. `RobotMap.tsx` and `TrackOrdersPage.tsx` are only on `origin/t16-order-tracking`.
+- `frontend/staff-dashboard/src/pages/DispatchPage.tsx` is an empty component, and the `/dispatch` route renders a placeholder stub instead.
+- Stale comment in `reports.py` says there is no `inventory_log` table, but the table exists and is simply never written.
 
 ## Per-task history
 
@@ -127,11 +134,11 @@ Status is as of `origin/main` as of 2026-11-12. Date Started and Date Finished a
 - 2026-10-14 Ethan: T13 with placeholder values in `trips.py`.
 - 2026-11-04 Kelvin: Trip model, mark-prepared assigns orders to trips, staff queue page (`dc77d8a`, PR #4).
 - 2026-11-04 Kelvin: grouping by proximity (0.5 km), lock trips when full or 30 minutes old, trip list and dispatch endpoints (`ffa235e`).
-- Ethan's `trips.py` is a 78-line placeholder. The working logic is Kelvin's (`planning.py`, `timeutil.py`).
+- Ethan's placeholder in `trips.py` was replaced. The working logic on `main` is Kelvin's (`planning.py`, `timeutil.py`, `trips.py`).
 
 ### T14 Route Optimizer (assigned: Ethan)
 - 2026-11-02 Ethan: "T14 logic with placeholder values/variables" in `trips.py`.
-- No Mapbox Optimization integration beyond that placeholder.
+- Ethan's draft computed nearest-neighbor distances through Mapbox in `trips.py`, but it was overwritten by Kelvin's trip code on 11/4. `main` has no Mapbox Optimization call.
 
 ### T15 Simulated robot fleet (assigned: Ethan)
 - The `robots` table and model arrived with T02 (Anuj, Kelvin).

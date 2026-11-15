@@ -50,7 +50,7 @@ Status below comes from reading the code on `origin/main` (2026-11-12) and runni
 | T19 | Manager Reports | Andrian | Andrian | 2026-11-03 | 2026-11-03 | Partial. Sales, inventory snapshot, delivery success rate. No stock adjustment history (no log), and I found no trip utilization metric. |
 | T20 | Delivery Pause and Order Override | Jorge | Jorge | 2026-10-21 | 2026-11-12 | Partial. Pause API works and blocks payment creation. Override supports cancel with a required reason. The pause settings page and the storefront pause notice are not on `main`. |
 
-Summary: 9 done (T02, T03, T04, T06–T11), 9 partial or mostly done (T01, T05, T12, T13, T16, T17 as noted, T18, T19, T20), 2 not on `main` (T14, T15). T17 is counted in the done list in spirit; adjust to taste.
+Summary: 10 done (T02, T03, T04, T06, T07, T08, T09, T10, T11, T17), 8 partial or mostly done (T01, T05, T12, T13, T16, T18, T19, T20), 2 not on `main` (T14, T15).
 
 ### Known problems on `main`
 - The storefront fails `tsc`: `src/App.tsx` imports `./pages/TrackOrdersPage`, which does not exist on `main`. `RobotMap.tsx` and `TrackOrdersPage.tsx` are only on `origin/t16-order-tracking`.

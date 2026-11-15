@@ -163,7 +163,7 @@ def prepare_order(order_id):
     return jsonify(order=order.to_dict(), trip=trip.to_dict())
 
 
-@bp.post("/<order_id>/override")
+@bp.post("/<int:order_id>/override")
 @require_role(MANAGER)
 def override_order(order_id):
     # T20 — Order Override. Owner: Nateras Jorge.
@@ -188,8 +188,9 @@ def override_order(order_id):
     if data.get("confirmed") is not True:
         return jsonify(error="INVALID_OVERRIDE"), 400
 
-    # Step 4: Find the order.
-    order = db.session.get(Order, order_id)
+    # Step 4: Find the order, locked: two Managers cancelling at once each saw it uncancelled, so it
+    # was cancelled, restocked, audited and emailed once per request (tests/test_stress_concurrency.py).
+    order = db.session.get(Order, order_id, with_for_update=True, populate_existing=True)
 
     if order is None:
         return jsonify(error="ORDER_NOT_FOUND"), 404

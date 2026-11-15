@@ -16,6 +16,7 @@ import BrowsePage from "./pages/BrowsePage";
 import CartPage from "./pages/CartPage";
 import CartMenu from "./components/CartMenu";
 import CheckOutPage from "./pages/CheckOutPage";
+import OrdersPage from "./pages/OrdersPage";
 
 function Nav() {
   const { user } = useAuth();
@@ -28,6 +29,7 @@ function Nav() {
     >
       <NavPill to="/browse">Browse</NavPill>
       <CartMenu key={pathname} />
+      <NavPill to="/orders">Orders</NavPill>
       <NavPill to="/track">Track</NavPill>
       {user && <AccountMenu />}
       {user === null && (
@@ -74,6 +76,14 @@ export default function App() {
               element={
                 <RequireAuth>
                   <CheckOutPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/orders"
+              element={
+                <RequireAuth>
+                  <OrdersPage />
                 </RequireAuth>
               }
             />

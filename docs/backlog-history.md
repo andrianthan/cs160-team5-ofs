@@ -19,9 +19,9 @@ Source of the history: `git log --all` on `cs160-team5-ofs`, 101 commits, 2026-0
 | Jorge Nateras | Jorge Nateras, Jorge | 11 | 9 |
 | Anuj Sharma | AnujSharma837 | 3 | 3 |
 | Ethan Notario Rodriguez | Ethan Notario | 4 | 3 |
-| Shresthkumar Karnani | Shresthkumar Karnani | 3 | 3 |
+| Shresthkumar Karnani | Shresthkumar Karnani | 9 | 9 |
 
-T04, T05 and T12 were assigned to Karnani. Kelvin built T04 and the first versions of T05 and T12. Karnani built the T05/T12 inventory log and the T12 customer order history page on 2026-11-14, on branch `shresth/t05-t12-inventory-log-order-history` (not yet merged, so after the 2026-11-12 snapshot used for the status column).
+T04, T05 and T12 were assigned to Karnani. Kelvin built T04 and the first versions of T05 and T12. Karnani built the T05/T12 inventory log, the T12 customer order history page, and API stress tests with fixes for what they found on 2026-11-14, on branch `shresth/t05-t12-inventory-log-order-history` (not yet merged, so after the 2026-11-12 snapshot used for the status column).
 
 ## Backlog with status
 
@@ -87,7 +87,7 @@ Summary: 10 done (T02, T03, T04, T06, T07, T08, T09, T10, T11, T17), 8 partial o
 ### T04 Auth and Roles backend (assigned: Karnani)
 - 2026-09-30 Kelvin: basic authentication and tests, `auth.py`, `user.py`, extensions (`120eb56`), more tests (`dcf0dc5`), fixes (`3a91276`).
 - 2026-10-04 Andrian merged `feat/authentication`.
-- No Karnani commits.
+- 2026-11-14 Karnani: stress tests found two T04 crashes and fixed them: simultaneous sign-ups with one email (500 instead of 409), and names over 120 characters (500 on PostgreSQL) (`02dcf41`, branch `shresth/t05-t12-inventory-log-order-history`, not merged).
 
 ### T05 Catalog and Inventory backend (assigned: Karnani)
 - 2026-10-07 Kelvin: Product model and API (`1a2b81d`).
@@ -180,3 +180,4 @@ Summary: 10 done (T02, T03, T04, T06, T07, T08, T09, T10, T11, T17), 8 partial o
 - Andrian: repo setup and docs, README and macOS setup notes, Part III status doc (`docs/part3-status.md`), PR merging.
 - Kelvin: README setup guide, Supabase hardening, removed stray binary files (`ui-prototype.zip`, `Archive.zip`, old DB backup).
 - Jorge: `ui-prototype` robot tracking.
+- Karnani: API stress tests (`85cd5df`): access control on every route and role, junk input on every route, sign-in abuse, and concurrent checkout, webhook, stock-edit and cancel races on PostgreSQL. Fixes for what they found outside T04: NUL characters in any JSON body were a 500 on PostgreSQL (`5c734c7`), simultaneous Manager cancels each restocked the order and the override route took a text id (T20, `4dc69a6`), and crashes in address validation (T11) and report dates (T19) (`e47e471`). All on branch `shresth/t05-t12-inventory-log-order-history`, not merged.

@@ -10,7 +10,7 @@ from flask_login import current_user
 
 from .auth import require_role, staff_required
 from .cart import validate_cart_for_checkout
-from .. import notifications
+from .. import inventory, notifications
 from ..config import Config
 from ..extensions import db
 from ..models import Cart, Order, OrderLine, Product, Trip
@@ -78,7 +78,7 @@ def place_order(payment):
             product_id=p.product_id, name=p.name, unit_price=p.price, weight_lb=p.weight_lb,
             quantity=line.quantity,
         ))
-        p.stock_qty -= line.quantity
+        inventory.change_stock(p, -line.quantity, inventory.SALE, user_id=payment.user_id, order=order)
         cart.lines.remove(line)
     db.session.add(order)
     db.session.flush()
@@ -216,6 +216,9 @@ def override_order(order_id):
     # Remove the order from an open trip.
     order.trip_id = None
     order.status = CANCELLED
+
+    # Put the cancelled items back in Stock, logged as CANCEL (T05/T12), in the same commit.
+    inventory.return_order_stock(order, user_id=current_user.id, note=reason[:inventory.NOTE_MAX])
 
 
     # Step 6: Create a persistent audit record.

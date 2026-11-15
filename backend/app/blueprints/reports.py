@@ -95,7 +95,7 @@ def sales_report():
 @bp.get("/inventory")
 @manager_required
 def inventory_report():
-    # Snapshot of current Stock. There is no inventory_log table yet, so no change history.
+    # Snapshot of current Stock. Per-product change history is GET /api/products/<id>/inventory-log.
     products = Product.query.filter_by(active=True).order_by(Product.name).all()
     out = [p for p in products if p.stock_qty <= 0]
     low = [p for p in products if 0 < p.stock_qty <= p.low_stock_threshold]

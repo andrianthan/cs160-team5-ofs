@@ -262,8 +262,19 @@ Good to know:
   `docker compose build storefront`.
 - `DATABASE_URL` is set by the override file for the local database; otherwise it comes from
   `backend/.env`.
-- Stripe webhooks still need the Stripe CLI on your machine:
-  `stripe listen --forward-to localhost:8080/api/payments/webhook`.
+- **Stripe webhooks** (orders are only created when Stripe's webhook arrives). Either run the
+  Stripe CLI on your machine (`stripe listen --forward-to localhost:8080/api/payments/webhook`), or
+  let Docker do it with the optional `stripe` service, which uses `STRIPE_SECRET_KEY` from
+  `backend/.env`:
+  ```
+  docker compose --profile stripe up -d
+  docker compose logs stripe          # prints "Your webhook signing secret is whsec_..."
+  ```
+  Put that `whsec_...` value in `backend/.env` as `STRIPE_WEBHOOK_SECRET` (once; it stays the same
+  across restarts), then `docker compose up -d --force-recreate backend`. The service is not started
+  by a plain `docker compose up`. Stop it with `docker compose --profile stripe stop stripe`.
+  (`stripe trigger` fails with the newest Stripe API version; test with the checkout page and card
+  `4242 4242 4242 4242` instead.)
 - The API runs one gunicorn worker with 4 threads, so it holds at most 5 database connections
   (the Supabase free tier is shared by the whole team).
 
@@ -274,9 +285,6 @@ Troubleshooting (Docker):
   - `Network is unreachable` and a host like `db.[PROJECT-REF].supabase.co`: that is the Direct
     connection address, which is IPv6-only, and Docker has no IPv6. Use the **Session pooler**
     string (section 5).
-  - `connection to server at "localhost" ... Connection refused`: the backend can't find
-    `DATABASE_URL` and is using its default. Check that `backend/.env` has the line spelled exactly
-    `DATABASE_URL=` (no typo, no leading `#`, no spaces around `=`).
   - `Tenant or user not found`: the region in the host or the `postgres.[PROJECT-REF]` user is
     wrong. Copy the string again from the dashboard.
   - `password authentication failed`: wrong password, or the brackets or a space ended up in it.

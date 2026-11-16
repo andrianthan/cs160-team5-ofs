@@ -43,3 +43,19 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+
+  # Optional: forwards Stripe test-mode webhooks to the backend (what `stripe listen` does by hand).
+  # Not started by default. Run with:  docker compose --profile stripe up -d
+  # Reads STRIPE_SECRET_KEY from backend/.env. Its signing secret (whsec_...) is printed in the logs:
+  #   docker compose logs stripe
+  # and must equal STRIPE_WEBHOOK_SECRET in backend/.env.
+  stripe:
+    image: stripe/stripe-cli:latest
+    profiles: ["stripe"]
+    env_file: backend/.env
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - 'exec stripe listen --api-key "$$STRIPE_SECRET_KEY" --events payment_intent.succeeded,payment_intent.payment_failed,payment_intent.canceled --forward-to http://backend:5000/api/payments/webhook'
+    depends_on:
+      backend:
+        condition: service_healthy

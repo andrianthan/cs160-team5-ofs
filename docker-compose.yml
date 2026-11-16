@@ -1,0 +1,45 @@
+# One command to run the whole site:  docker compose up --build
+#   Storefront      http://localhost:8080
+#   Staff dashboard http://localhost:8081
+# Needs backend/.env (copy backend/.env.example). The database is whatever DATABASE_URL points at
+# (the shared Supabase project). For a private throwaway database instead, add the override:
+#   docker compose -f docker-compose.yml -f docker-compose.localdb.yml up --build
+# The two VITE_* values are baked into the storefront at build time; put them in a root .env file
+# (see .env.example).
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file: backend/.env
+    expose: ["5000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:5000/api/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  storefront:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        APP: storefront
+        VITE_STRIPE_PUBLISHABLE_KEY: ${VITE_STRIPE_PUBLISHABLE_KEY:-}
+        VITE_MAPBOX_TOKEN: ${VITE_MAPBOX_TOKEN:-}
+    ports: ["8080:80"]
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  staff:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        APP: staff-dashboard
+    ports: ["8081:80"]
+    depends_on:
+      backend:
+        condition: service_healthy

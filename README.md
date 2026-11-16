@@ -12,7 +12,7 @@ Self-driving Robots carry up to 10 Orders / 200 lb per Trip.
 - **Payments:** Stripe (test mode)
 - **Auth:** Flask-Login, session-based
 
-Not yet set up, but in the Part I HLD: Apache (deployment reverse proxy), Vitest (frontend tests).
+Apache (deployment reverse proxy) is set up in the Docker config (see Docker Setup). Not yet set up, but in the Part I HLD: Vitest (frontend tests).
 
 ## Team Roles (Part I)
 
@@ -217,8 +217,40 @@ If the pull added a migration (a new file in `backend/migrations/versions/`):
 
 ## Docker Setup
 
-Not set up yet. This section will cover running the whole app (backend, both frontends, and a
-database) with `docker compose up`.
+Runs the whole site in containers: the Flask API on gunicorn, and both React apps behind Apache
+(static files, browser-route fallback, `/api/*` proxied to the API). It is optional; day-to-day
+development still uses `npm run dev` (section 7). You need Docker with Compose v2.
+
+| Service | URL |
+|---|---|
+| Storefront | http://localhost:8080 |
+| Staff dashboard | http://localhost:8081 |
+
+**Against the shared Supabase database** (needs `backend/.env` from section 4):
+```
+cp .env.example .env     # then fill in the two VITE_* values (the same as frontend/storefront/.env)
+docker compose up --build
+```
+Don't run the seed against the shared database. New migrations are still applied by the project
+owner (see "Keeping up to date").
+
+**Against a private throwaway database** (a PostgreSQL 16 container; safe for seeding and testing):
+```
+docker compose -f docker-compose.yml -f docker-compose.localdb.yml up -d --build
+docker compose -f docker-compose.yml -f docker-compose.localdb.yml run --rm backend flask --app app:create_app db upgrade
+docker compose -f docker-compose.yml -f docker-compose.localdb.yml run --rm backend python seed_demo.py
+```
+The seed prints the demo logins. `docker compose ... down -v` also deletes the database volume.
+
+Good to know:
+- The `VITE_*` values are baked into the storefront at **build** time. Change them, then run
+  `docker compose build storefront`.
+- `DATABASE_URL` is set by the override file for the local database; otherwise it comes from
+  `backend/.env`.
+- Stripe webhooks still need the Stripe CLI on your machine:
+  `stripe listen --forward-to localhost:8080/api/payments/webhook`.
+- The API runs one gunicorn worker with 4 threads, so it holds at most 5 database connections
+  (the Supabase free tier is shared by the whole team).
 
 ## Shared Frontend Package
 

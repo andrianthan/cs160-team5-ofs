@@ -99,11 +99,12 @@ class Robot():
         return self.longitude
 
     # TODO: simulate robot movement on given route
-    # if using same 
+    # if using same route in my old T14 mapbox api call, should be round trip
     def do_trip(self, trip:Trip):
         if not self.trigger("trip_assigned"):
             print(f"loading failed; robot not available; current state = {self.state}")
             return
+        self.reserve_bot()#if trip assigned, might be reserved, try to reserve new bot
         #loading time
         self.load_bot()
         if not self.trigger("loading_complete"):
@@ -122,6 +123,7 @@ class Robot():
         trip.completed_at = datetime.now(timezone.utc)
         #return home
         self.trigger("depot_reached")
+        self.reserve_bot()#returning to available state, so reserve if none currently reserve
         return
 
     def travel(self, stop:TripStop):
@@ -145,17 +147,36 @@ class Robot():
         return
     #for designating bots as reserved or available
     def reserve_bot():
-        #TODO: check if reserved bot exists, then check if available exists, if yes reserve
+        #check if reserved bot exists, then check if available exists, if yes reserve
+        reserved_bot = db.session.query(RobotModel).filter_by(status = RESERVED).first()
+        if  reserved_bot is not None:
+            print(f"Robot with ID {reserved_bot.id} is already reserved")
+            return
+        reserved_bot = db.session.query(RobotModel).filter_by(status = AVAILABLE).first()
+        if reserved_bot is not None:
+            reserved_bot.status = RESERVED
+            print(f"Robot with ID {reserved_bot.id} has been reserved")
+            return
+        print("No robots currently available to reserve")
         return
     # reserved to available unnecessary?
 
     #for loading robot
     def load_bot(self):
         #probably just wait? also prompt continue or cancel trip
+        answer = ""
+        #TODO: replace with button for employee/manager page
+        while answer not in ("Continue", "Cancel"):
+            answer = input("Press Continue to finish loading and dispatch or Cancel to cancel loading and free up this robot")
+        if answer == "Cancel":
+            self.trigger("trip_canceled")
+            print(f"Trip canceled; Robot with ID {self.id} now available")
+            self.reserve_bot()#returning to available state, so reserve if none currently reserved
         return
 
     #for resolve maintenance
     def resolve_maintenance(self):
+        self.reserve_bot()#returning to available state, so reserve if none currently reserved
         return
     
     # TODO: state transitions

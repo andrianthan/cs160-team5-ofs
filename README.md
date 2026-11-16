@@ -107,6 +107,21 @@ DATABASE_URL=postgresql://postgres.[PROJECT-REF]:[DB-PASSWORD]@aws-0-[REGION].po
 ```
 Use the **Session pooler**, not "Direct connection" (the direct `db.[PROJECT-REF].supabase.co`
 address needs IPv6, which many networks lack). `?sslmode=require` encrypts the connection.
+
+Step by step in the Supabase dashboard (the labels may move slightly between versions):
+1. Open the project and click **Connect** at the top of the page.
+2. Choose the **Direct** tab, then **Connection String**. (The tab is called Direct, but you pick
+   the connection type in the next step.)
+3. Set **Method** to **Session pooler** (not "Direct connection" and not "Transaction pooler").
+4. Copy the string. It looks like
+   `postgresql://postgres.[PROJECT-REF]:[YOUR-PASSWORD]@aws-0-[REGION].pooler.supabase.com:5432/postgres`.
+   Check that the user is `postgres.[PROJECT-REF]` (with the project reference), the host ends in
+   `pooler.supabase.com` and the port is `5432`.
+5. Replace `[YOUR-PASSWORD]` with the database password, **without the square brackets**, and add
+   `?sslmode=require` to the end.
+6. Paste it into `backend/.env` as `DATABASE_URL=...`. The name must be spelled exactly
+   `DATABASE_URL`. A typo such as `DATABASE_UR` is ignored without any warning, and the app then
+   quietly falls back to `localhost:5432`.
 The tables and demo data already exist there: **don't run the seed** against the shared database.
 
 Every table has row-level security on (migration `0003_enable_rls`), so Supabase's public API key
@@ -251,6 +266,25 @@ Good to know:
   `stripe listen --forward-to localhost:8080/api/payments/webhook`.
 - The API runs one gunicorn worker with 4 threads, so it holds at most 5 database connections
   (the Supabase free tier is shared by the whole team).
+
+Troubleshooting (Docker):
+- **"Could not load products. Check that the backend is running." in the browser, but
+  `docker compose ps` says the backend is healthy.** The API is up and the database isn't
+  reachable. Run `docker compose logs --tail 40 backend` and read the last error:
+  - `Network is unreachable` and a host like `db.[PROJECT-REF].supabase.co`: that is the Direct
+    connection address, which is IPv6-only, and Docker has no IPv6. Use the **Session pooler**
+    string (section 5).
+  - `connection to server at "localhost" ... Connection refused`: the backend can't find
+    `DATABASE_URL` and is using its default. Check that `backend/.env` has the line spelled exactly
+    `DATABASE_URL=` (no typo, no leading `#`, no spaces around `=`).
+  - `Tenant or user not found`: the region in the host or the `postgres.[PROJECT-REF]` user is
+    wrong. Copy the string again from the dashboard.
+  - `password authentication failed`: wrong password, or the brackets or a space ended up in it.
+- **After changing `backend/.env`, run
+  `docker compose up -d --force-recreate backend`.** The file is read when the container starts,
+  so there is no need to rebuild.
+- `docker compose config` prints what Compose will actually use, **including secrets**. Don't paste
+  its output anywhere.
 
 ## Shared Frontend Package
 

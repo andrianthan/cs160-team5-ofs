@@ -62,8 +62,13 @@ tables and their data; use it only on a backed-up/disposable database.
   queue and can ride a later trip, and its first stop stays as history.
 - Indexes support catalog filtering, customer/order queues, inventory history, and routes.
 - Pending payments allow a null order_id; linked payments use a unique foreign key.
-- InventoryLog storage is ready; T05/T12 must write sale/restock/cancel entries in the
-  same transaction as stock changes. The current demo seed is unchanged and does not write inventory logs.
+- Every Stock change writes an InventoryLog row in the same transaction, through
+  `app/inventory.py` (T05/T12): SALE when checkout places an Order, RESTOCK / RETURN / CORRECTION
+  when a Manager edits Stock (`PATCH /api/products/<id>` with optional `stock_reason` and
+  `stock_note`), and CANCEL when an Order Override puts a cancelled Order's items back. Managers read
+  it at `GET /api/products/<id>/inventory-log`. Creating a product logs nothing; its starting Stock
+  is the first row's before_qty. A product with orders or Stock history can't be deleted, only
+  deactivated. The demo seed does not write inventory logs.
 - Address CRUD, robot simulation, route population, tracking, and
   delivery-pause enforcement remain their feature owners' integration work.
 - Route JSON uses PostgreSQL JSONB and SQLite JSON for local tests.

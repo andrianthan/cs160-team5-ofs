@@ -1,4 +1,7 @@
+from datetime import timezone
+
 from ..extensions import db
+from ..timeutil import as_utc, iso_utc
 
 
 class InventoryLog(db.Model):
@@ -27,3 +30,19 @@ class InventoryLog(db.Model):
     product = db.relationship("Product")
     user = db.relationship("User")
     order = db.relationship("Order")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "productId": self.product_id,
+            "orderId": self.order_id,
+            "userId": self.user_id,
+            "userName": self.user.name if self.user else None,
+            "beforeQty": self.before_qty,
+            "changeQty": self.change_qty,
+            "afterQty": self.after_qty,
+            "reason": self.reason,
+            "note": self.note,
+            # created_at comes from the database clock, which reports its own time zone: send UTC like the rest of the API.
+            "createdAt": iso_utc(as_utc(self.created_at).astimezone(timezone.utc)) if self.created_at else None,
+        }

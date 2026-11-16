@@ -10,7 +10,7 @@ from flask_login import current_user
 
 from .auth import require_role, staff_required
 from .cart import validate_cart_for_checkout
-from .. import notifications
+from .. import inventory, notifications
 from ..config import Config
 from ..extensions import db
 from ..models import Cart, Order, OrderLine, Product, Trip
@@ -78,7 +78,7 @@ def place_order(payment):
             product_id=p.product_id, name=p.name, unit_price=p.price, weight_lb=p.weight_lb,
             quantity=line.quantity,
         ))
-        p.stock_qty -= line.quantity
+        inventory.change_stock(p, -line.quantity, inventory.SALE, user_id=payment.user_id, order=order)
         cart.lines.remove(line)
     db.session.add(order)
     db.session.flush()
@@ -163,7 +163,7 @@ def prepare_order(order_id):
     return jsonify(order=order.to_dict(), trip=trip.to_dict())
 
 
-@bp.post("/<order_id>/override")
+@bp.post("/<int:order_id>/override")
 @require_role(MANAGER)
 def override_order(order_id):
     # T20 — Order Override. Owner: Nateras Jorge.
@@ -188,8 +188,9 @@ def override_order(order_id):
     if data.get("confirmed") is not True:
         return jsonify(error="INVALID_OVERRIDE"), 400
 
-    # Step 4: Find the order.
-    order = db.session.get(Order, order_id)
+    # Step 4: Find the order, locked: two Managers cancelling at once each saw it uncancelled, so it
+    # was cancelled, restocked, audited and emailed once per request (tests/test_stress_concurrency.py).
+    order = db.session.get(Order, order_id, with_for_update=True, populate_existing=True)
 
     if order is None:
         return jsonify(error="ORDER_NOT_FOUND"), 404
@@ -216,6 +217,9 @@ def override_order(order_id):
     # Remove the order from an open trip.
     order.trip_id = None
     order.status = CANCELLED
+
+    # Put the cancelled items back in Stock, logged as CANCEL (T05/T12), in the same commit.
+    inventory.return_order_stock(order, user_id=current_user.id, note=reason[:inventory.NOTE_MAX])
 
 
     # Step 6: Create a persistent audit record.

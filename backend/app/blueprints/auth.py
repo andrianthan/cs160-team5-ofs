@@ -5,6 +5,7 @@ from functools import wraps
 from email_validator import EmailNotValidError, validate_email
 from flask import Blueprint, jsonify, request
 from flask_login import current_user, login_user, logout_user
+from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash
 
 from ..extensions import db
@@ -13,6 +14,7 @@ from ..models.user import CUSTOMER, EMPLOYEE, MANAGER, User
 bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
 MIN_PASSWORD_LENGTH = 8
+MAX_NAME_LENGTH = User.name.type.length
 
 _IMPLIED_ROLES = {
     CUSTOMER: {CUSTOMER},
@@ -69,6 +71,9 @@ def register():
 
     if not name:
         return _error("invalid_name", "Enter a valid name", 400)
+    # users.name is VARCHAR(120): a longer name was a 500 on PostgreSQL and saved whole on SQLite.
+    if len(name) > MAX_NAME_LENGTH:
+        return _error("invalid_name", f"Name must be at most {MAX_NAME_LENGTH} characters", 400)
 
     if not isinstance(password, str) or len(password) < MIN_PASSWORD_LENGTH:
         return _error("invalid_password", "Enter a valid password", 400)
@@ -80,7 +85,13 @@ def register():
     user.password_hash = hash_password(password)
 
     db.session.add(user)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except IntegrityError:
+        # Two sign-ups with this email at the same moment both passed the check above; the unique
+        # index lets one through. The other was a 500 (tests/test_stress_concurrency.py).
+        db.session.rollback()
+        return _error("email_taken", "An account with this email address has been made already", 409)
 
     create_session(user)
 

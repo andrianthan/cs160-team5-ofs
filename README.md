@@ -91,13 +91,25 @@ after changing them run `docker compose build storefront`. After changing `backe
 `docker compose up -d --force-recreate backend`.
 
 **With the team's Supabase database:** put its connection string in `backend/.env` (see
-[Database](#database)) and run `docker compose up -d --build`. Never seed it.
+[Database](#database)), then start everything, with or without the Stripe forwarder:
+```
+docker compose up -d --build                        # backend + both apps
+docker compose --profile stripe up -d --build       # the same, plus the Stripe webhook forwarder
+```
+There is no `AUTO_SEED` here: the shared database already has its data, and `AUTO_SEED=1` refuses to
+run against it. Seeding it would add the demo products and customers to the team's real data; if
+that is really what you want, run `docker compose run --rm backend python seed_demo.py` by hand
+(order history is only added to a database with no orders). Stop with
+`docker compose --profile stripe down`.
 
 **Stripe webhooks** (an order is only created when Stripe's webhook arrives): add the optional
 `stripe` service, which uses `STRIPE_SECRET_KEY` from `backend/.env`:
 ```
-docker compose --profile stripe up -d --build     # add the same -f flags if you use the local database
-docker compose logs stripe                        # prints "Your webhook signing secret is whsec_..."
+# Supabase:
+docker compose --profile stripe up -d --build
+# Private database with demo data (all in one):
+AUTO_SEED=1 docker compose -f docker-compose.yml -f docker-compose.localdb.yml --profile stripe up -d --build
+docker compose logs stripe          # prints "Your webhook signing secret is whsec_..." (add the same -f flags)
 ```
 Put that `whsec_...` in `backend/.env` as `STRIPE_WEBHOOK_SECRET` (once; it stays the same), then
 `docker compose up -d --force-recreate backend`. Test with the checkout page and card

@@ -76,8 +76,16 @@ demo data:
 
 `AUTO_SEED` is **off by default**: without it nothing is created. It is safe to leave on (it only adds
 what is missing, and loads order history only into a database with no orders) and it **refuses to run
-against the shared Supabase database**. `docker compose -f docker-compose.yml -f docker-compose.localdb.yml down -v`
-deletes the database volume to start over.
+against the shared Supabase database**.
+
+**Reset to a clean slate** (deletes every table and all data in the private database, then seeds again;
+the stack can stay running):
+```
+docker compose -f docker-compose.yml -f docker-compose.localdb.yml run --rm backend python seed_demo.py --reset
+```
+`--reset` only works on the local database (Docker or a SQLite file) and always refuses Supabase.
+Without Docker: `cd backend && python seed_demo.py --reset`. To delete the database volume instead, add
+`down -v` to the same compose command.
 
 **Checkout and the address map need keys** (everything else works without them). Put the server keys
 in `backend/.env` (copy `backend/.env.example`, see [Backend settings](#backend-settings)) and the two
@@ -175,7 +183,7 @@ URL) and run `flask --app app:create_app db upgrade` once after any PR with a ne
 
 **B. A private local database (offline, your own data).** Set `DATABASE_URL=sqlite:///demo.db`, then
 `python seed_demo.py` (creates `backend/instance/demo.db` with the same demo data as Docker). To start
-over, delete that file and seed again.
+over, run `python seed_demo.py --reset`.
 
 **3. Frontend:** from the repo root run `npm install` (one install covers both apps and the shared
 package). The storefront also needs two **public** keys in `frontend/storefront/.env` (gitignored;

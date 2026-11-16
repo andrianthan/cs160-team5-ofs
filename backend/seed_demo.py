@@ -5,10 +5,12 @@ Uses DATABASE_URL from backend/.env, like run.py does; a DATABASE_URL set in the
     python seed_demo.py                                   # whatever .env points at
     DATABASE_URL=sqlite:///demo.db python seed_demo.py    # one-off local SQLite
     python seed_demo.py --auto                            # what Docker runs when AUTO_SEED=1
+    python seed_demo.py --reset                           # wipe EVERYTHING, then seed from scratch
 
 It is safe to run again: accounts and products are only added when missing, and the order history
 is only written to a database that has no orders yet. --auto additionally refuses to touch any
-database that is not local (the shared Supabase project).
+database that is not local (the shared Supabase project). --reset deletes every table and all its
+data first; it only ever runs against a local database, with no way to override that.
 """
 import sys
 from decimal import Decimal
@@ -32,17 +34,40 @@ LOCAL_HOSTS = {"db", "localhost", "127.0.0.1", "::1", None}
 MIGRATIONS = Path(__file__).resolve().parent / "migrations"
 
 AUTO = "--auto" in sys.argv
+RESET = "--reset" in sys.argv
 
 app = create_app()
-if AUTO:
-    _url = sa.engine.make_url(app.config["SQLALCHEMY_DATABASE_URI"])
-    if _url.get_backend_name() != "sqlite" and _url.host not in LOCAL_HOSTS:
-        sys.exit(
-            f"AUTO_SEED refused: {_url.host} is not a local database. Automatic seeding only runs against\n"
-            "the bundled database container. To seed this one on purpose, run: python seed_demo.py"
-        )
+_url = sa.engine.make_url(app.config["SQLALCHEMY_DATABASE_URI"])
+_is_local = _url.get_backend_name() == "sqlite" or _url.host in LOCAL_HOSTS
+if RESET and not _is_local:
+    sys.exit(
+        f"--reset refused: {_url.host} is not a local database, and a reset deletes everything in it.\n"
+        "Reset only works on the bundled Docker database or a local SQLite file."
+    )
+if AUTO and not _is_local:
+    sys.exit(
+        f"AUTO_SEED refused: {_url.host} is not a local database. Automatic seeding only runs against\n"
+        "the bundled database container. To seed this one on purpose, run: python seed_demo.py"
+    )
 print(f"Seeding {sa.engine.make_url(app.config['SQLALCHEMY_DATABASE_URI']).render_as_string(hide_password=True)}")
+
+def wipe_database():
+    """Delete every table and all data, including the migration history, so upgrade() starts clean."""
+    if db.engine.dialect.name == "postgresql":
+        with db.engine.begin() as conn:
+            conn.execute(sa.text("DROP SCHEMA public CASCADE"))
+            conn.execute(sa.text("CREATE SCHEMA public"))
+    else:
+        meta = sa.MetaData()
+        meta.reflect(bind=db.engine)
+        meta.drop_all(bind=db.engine)
+    db.session.remove()
+
+
 with app.app_context():
+    if RESET:
+        print("Resetting: deleting every table and all data first")
+        wipe_database()
     # Build the schema through the migrations, not db.create_all(): that leaves the database
     # versioned (alembic_version), so a later `flask db upgrade` applies only what's new.
     tables = set(sa.inspect(db.engine).get_table_names())

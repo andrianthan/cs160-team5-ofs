@@ -5,6 +5,7 @@ from .models.trip import Trip
 from .models.trip_stop import TripStop
 from .config import Config
 from .extensions import db
+from .planning import distance_km #haversine distance
 
 # AVAILABLE -(trip assigned)-> LOADING
 # AVAILABLE -(manual override/low battery)-> OFFLINE
@@ -110,12 +111,46 @@ class Robot():
         if not self.trigger("loading_complete"):
             print(f"dispatch failed; robot not in loading state; current state = {self.state}")
             return
+        
         route_geoemetry = trip.route_geometry
+        # Mapbox route geometry (assuming standard GeoJSON formatting)
+        # e.g., {'type': 'LineString', 'coordinates': [[lon1, lat1], [lon2, lat2], ...]}
+        route_coords = route_geoemetry.get("coordinates", []) if isinstance(route_geoemetry, dict) else route_geoemetry
+        
         trip.robot = self.bot
         stops = trip.stops
-        for trip_stop in stops:
-            self.travel(trip_stop)
-            #wait for unloading before moving on to next stop
+        time_elapsed_seconds = 0
+        
+        current_stop_idx = 0
+
+        # Simulate moving along the route coordinates
+        for coord in route_coords:
+            # Mapbox returns [longitude, latitude]
+            self.longitude = coord[0] 
+            self.latitude = coord[1]
+            
+            # Update DB Model
+            self.bot.current_longitude = self.longitude
+            self.bot.current_latitude = self.latitude
+            self.bot.updated_at = datetime.now(timezone.utc)
+            db.session.commit()
+            
+            # Simulate time passing between nodes (adjust based on desired simulation speed)
+            #time.sleep(1) 
+            time_elapsed_seconds+=1
+            #timer needs to be non-blocking - using counter for now
+            
+            # Check if we are close to the next stop (e.g., within 15 meters)
+            if current_stop_idx < len(stops):
+                target_stop = stops[current_stop_idx]
+                distance = distance_km(
+                    self.longitude, self.latitude, 
+                    target_stop.longitude, target_stop.latitude
+                )
+                
+                if distance < 15.0: 
+                    self.travel(target_stop)
+                    current_stop_idx += 1
 
         #at last stop:
         self.trigger("last_stop")
@@ -127,12 +162,14 @@ class Robot():
         return
 
     def travel(self, stop:TripStop):
-        #travel start
-        #TODO: implement travel
-
-        #destination reached
+        # Destination reached
+        print(f"Arrived at stop {stop.id}. Unloading...")
         stop.arrived_at = datetime.now(timezone.utc)
+
+        #unloading time
+        
         stop.completed_at = datetime.now(timezone.utc)
+        db.session.commit()
         return
 
     #for taking bot offline

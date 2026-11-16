@@ -1,8 +1,14 @@
-"""Create the tables (via migrations) plus demo users, products, and a saved customer cart.
+"""Create the tables (via migrations) plus demo data: accounts, a full catalog, a saved customer cart,
+two Robots and two weeks of order history (see demo_data.py).
 
 Uses DATABASE_URL from backend/.env, like run.py does; a DATABASE_URL set in the terminal wins:
     python seed_demo.py                                   # whatever .env points at
     DATABASE_URL=sqlite:///demo.db python seed_demo.py    # one-off local SQLite
+    python seed_demo.py --auto                            # what Docker runs when AUTO_SEED=1
+
+It is safe to run again: accounts and products are only added when missing, and the order history
+is only written to a database that has no orders yet. --auto additionally refuses to touch any
+database that is not local (the shared Supabase project).
 """
 import sys
 from decimal import Decimal
@@ -18,34 +24,23 @@ load_dotenv(Path(__file__).resolve().parent / ".env")
 from app import create_app  # noqa: E402
 from app.extensions import db  # noqa: E402
 from app.models import Cart, CartLine, Product, User  # noqa: E402
+from demo_data import DEMO_CART, DEMO_PRODUCTS, DEMO_USERS, build_history  # noqa: E402
 
-DEMO_USERS = [
-    ("customer@example.com", "Casey Customer", "customer", "customer123"),
-    ("employee@example.com", "Eli Employee", "employee", "employee123"),
-    ("manager@example.com", "Maya Manager", "manager", "manager123"),
-]
-
-DEMO_PRODUCTS = [
-    ("Organic Gala Apples (3 lb bag)", "Produce", "5.99", "3.00", 40),
-    ("Baby Spinach (5 oz)", "Produce", "3.49", "0.30", 25),
-    ("Russet Potatoes (5 lb bag)", "Produce", "4.49", "5.00", 20),
-    ("Free-Range Eggs (dozen)", "Dairy", "6.49", "1.60", 18),
-    ("Whole Milk (half gallon)", "Dairy", "4.99", "4.30", 4),
-    ("Sourdough Loaf", "Bakery", "5.50", "1.20", 12),
-    ("Rolled Oats (2 lb)", "Pantry", "4.25", "2.00", 50),
-    ("Olive Oil (500 ml)", "Pantry", "11.99", "2.20", 15),
-]
-
-# Product name -> quantity in customer@example.com's saved cart.
-DEMO_CART = {
-    "Organic Gala Apples (3 lb bag)": 1,
-    "Baby Spinach (5 oz)": 2,
-    "Free-Range Eggs (dozen)": 1,
-}
+# Hosts --auto may seed. Anything else (Supabase, a teammate's server) is refused.
+LOCAL_HOSTS = {"db", "localhost", "127.0.0.1", "::1", None}
 
 MIGRATIONS = Path(__file__).resolve().parent / "migrations"
 
+AUTO = "--auto" in sys.argv
+
 app = create_app()
+if AUTO:
+    _url = sa.engine.make_url(app.config["SQLALCHEMY_DATABASE_URI"])
+    if _url.get_backend_name() != "sqlite" and _url.host not in LOCAL_HOSTS:
+        sys.exit(
+            f"AUTO_SEED refused: {_url.host} is not a local database. Automatic seeding only runs against\n"
+            "the bundled database container. To seed this one on purpose, run: python seed_demo.py"
+        )
 print(f"Seeding {sa.engine.make_url(app.config['SQLALCHEMY_DATABASE_URI']).render_as_string(hide_password=True)}")
 with app.app_context():
     # Build the schema through the migrations, not db.create_all(): that leaves the database
@@ -69,7 +64,7 @@ with app.app_context():
             db.session.add(user)
         users[email] = user
 
-    for name, category, price, weight_lb, stock_qty in DEMO_PRODUCTS:
+    for name, category, price, weight_lb, stock_qty, threshold, active in DEMO_PRODUCTS:
         product = Product.query.filter_by(name=name).first()
         if product is None:
             db.session.add(
@@ -79,6 +74,8 @@ with app.app_context():
                     price=Decimal(price),
                     weight_lb=Decimal(weight_lb),
                     stock_qty=stock_qty,
+                    low_stock_threshold=threshold,
+                    active=active,
                 )
             )
 
@@ -107,6 +104,8 @@ with app.app_context():
         )
 
     db.session.commit()
+
+    print(f"Order history: {build_history()}")
 
     print("Demo accounts (email / password):")
     for email, _, role, password in DEMO_USERS:

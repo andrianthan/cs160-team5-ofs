@@ -11,14 +11,20 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    env_file: backend/.env
+    env_file:
+      - path: backend/.env
+        required: false   # a fresh clone has none: the app starts, but checkout needs the keys
+    environment:
+      # Off by default. AUTO_SEED=1 docker compose ... up runs migrations + loads the demo data first.
+      # It only works with the bundled database (docker-compose.localdb.yml); it refuses anything else.
+      AUTO_SEED: ${AUTO_SEED:-0}
     expose: ["5000"]
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:5000/api/health', timeout=3)"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 15s
+      start_period: 90s   # leaves room for the migrations and seed when AUTO_SEED=1
 
   storefront:
     build:

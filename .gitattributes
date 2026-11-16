@@ -1,0 +1,5 @@
+# Keep these LF on every OS: Docker and Apache choke on Windows (CRLF) line endings.
+*.conf text eol=lf
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.yml text eol=lf

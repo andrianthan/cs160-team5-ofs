@@ -423,7 +423,7 @@ delivery_failed &rarr; back to placed &nbsp;&middot;&nbsp; manual_review &rarr; 
     <li><b>Open the customer's Track tab before you dispatch.</b> The map refreshes every 10 seconds, so opening it after the Robot has arrived shows nothing to watch.</li>
     <li><b>Run the backend on port 5001, not 5000.</b> macOS AirPlay Receiver owns 5000 and answers everything with 403, which looks exactly like a dead backend.</li>
     <li><b>Start the backend with <code>FLASK_RELOAD=0</code>.</b> The Flask reloader can lose the port on restart and take the whole server down mid-demo.</li>
-    <li><b>The Stripe <code>whsec</code> changes every time <code>stripe listen</code> starts.</b> Copy the one it prints into <code>backend/.env</code> and restart the backend, or every payment is rejected as an invalid signature.</li>
+    <li><b>The Stripe <code>whsec</code> must match the running listener.</b> <code>cd backend &amp;&amp; ./start_stripe_listener.sh</code> starts the listener and writes the right secret into <code>backend/.env</code>; then restart the backend. The CLI's own OAuth token also expires every ~24h &mdash; if the listener dies with <code>expired OAuth token</code>, run <code>stripe login</code> and start it again, or payments stop arriving silently.</li>
     <li><b>The Stripe badge</b> in the checkout screenshot (small dark badge, right side) is Stripe's test-mode widget. Harmless, leave it.</li>
     <li><b>Whole Milk stock is 4</b> right now. If you reset, it goes back to 4 &mdash; that is intentional, it drives the low-stock alert.</li>
   </ul>

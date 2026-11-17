@@ -70,10 +70,11 @@ Checked by hand against the running stack, not just in unit tests.
 | **Mapbox** | ✅ Done. Geocoding and Search JS autofill live in checkout; the Optimization API returns the Trip route and per-stop ETAs (checked 11/16). |
 | **SMTP against a real provider** | 🔶 Blocked on credentials. Transport, STARTTLS and the AUTH exchange are all verified against `smtp.gmail.com` — a wrong password now returns Gmail's real `535 Username and Password not accepted`. Only the Gmail address + app password are missing. |
 
-Two defects found and fixed during this verification, both worth knowing about:
+Three defects found and fixed during this verification, all worth knowing about:
 
 - The demo SQLite database was **missing 8 tables**, so `/api/settings/delivery-pause` returned 500 on every checkout page. `python seed_demo.py --with-orders` now recreates all 17 and seeds a week of Orders with the Trips that delivered them, so the Reports metrics have numbers from a fresh reset.
 - The Flask reloader could lose its port on restart and **take the whole server down**. `FLASK_RELOAD=0` disables it; the demo run-of-show uses it.
+- The Stripe webhook listener had **died from an expired CLI OAuth token**, and its signing secret no longer matched the one in `.env`. `backend/start_stripe_listener.sh` now starts the listener, syncs the secret into `.env` and refreshes the CLI token in one step — the old failure was silent, since payments simply stopped arriving.
 
 # Remaining Work — through 11/23
 

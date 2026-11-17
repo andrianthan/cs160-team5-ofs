@@ -42,27 +42,30 @@ with the Trips that delivered them. Those Trips carry the ETAs, so the Reports p
 rate (60%), delivery duration (14 min) and trip utilization to show — slide 8 has numbers even
 if the live dispatch is slow. Without `--with-orders` all three metrics are null.
 
-### 1.2 Start the Stripe webhook listener **first**, then copy its secret
-
-> **Why:** `stripe listen` prints a **new signing secret every time it starts**. The secret in
-> `backend/.env` belongs to whichever run produced it. If they disagree, every payment is
-> rejected with `invalid_signature` and the Order is never created.
+### 1.2 Start the Stripe webhook listener, and sync its secret
 
 ```bash
 cd backend
-stripe listen --events payment_intent.succeeded,payment_intent.payment_failed,payment_intent.canceled \
-  --forward-to localhost:5001/api/payments/webhook
+./start_stripe_listener.sh
 ```
 
-It prints:
+That starts the listener, writes the signing secret it reports into `backend/.env` as
+`STRIPE_WEBHOOK_SECRET`, and prints the command to restart the backend. **Restart the backend
+afterwards** so it picks the secret up.
 
-```
-Ready! ... Your webhook signing secret is whsec_XXXXXXXXXXXXXXXXXXXXXXXX
-```
+> **Why this is a script and not a copy-paste.** Two things bite here:
+>
+> 1. The secret the listener reports is the one the backend must verify against. The pair in
+>    `backend/.env` belongs to whichever listener run produced it — we saw a different one on
+>    11/4 and on 11/16. If they disagree, every payment is rejected with `invalid_signature`
+>    and the Order is never created. The script always syncs the two.
+> 2. The Stripe CLI's own OAuth token expires, about every 24 hours here. When it does, the
+>    listener dies with `expired OAuth token` and **payments stop arriving silently** —
+>    nothing fails loudly, the Order just never appears. `stripe login` fixes it, and the
+>    script runs `stripe whoami` first, which refreshes the token.
 
-Copy that `whsec_...` into `backend/.env` as `STRIPE_WEBHOOK_SECRET`, **then** start the
-backend. If you restart the listener later, you must copy the new secret and restart the
-backend again.
+To stop it: `./start_stripe_listener.sh --stop`. The listener's output is in
+`backend/stripe-listen.log`.
 
 ### 1.3 Start the three services
 
@@ -267,7 +270,7 @@ Never cut the Stripe payment — it is the highest-value 90 seconds in the demo.
 | Map says "Robot location is not available yet" | The Order has not been dispatched yet. Dispatch it. |
 | Map never updates | The page polls every 10 s; reload the Track tab to force an immediate fetch. |
 | Reports page is empty | `seed_orders.py` did not run. Rerun 1.1. |
-| Stripe CLI says "expired OAuth token" | `stripe login` — it re-authenticates the browser flow. Start the listener *after* logging in. |
+| Stripe CLI says "expired OAuth token" | `stripe login`, then `./start_stripe_listener.sh` again and restart the backend. The listener died, so payments are not arriving. |
 
 ---
 

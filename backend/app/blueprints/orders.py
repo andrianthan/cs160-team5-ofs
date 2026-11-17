@@ -10,16 +10,18 @@ from flask_login import current_user
 
 from .auth import require_role, staff_required
 from .cart import validate_cart_for_checkout
-from .. import notifications
+from .. import inventory, notifications
 from ..config import Config
 from ..extensions import db
-from ..models import Cart, Order, OrderLine, Product
+from ..models import Cart, Order, OrderLine, Product, Trip
+from ..models import OrderOverrideAudit
 from ..models.order import (
-    DELIVERED, DELIVERY_FAILED, MANUAL_REVIEW, OUT_FOR_DELIVERY, PLACED, PLANNED, STATUSES,
+    DELIVERED, DELIVERY_FAILED, MANUAL_REVIEW, OUT_FOR_DELIVERY, PLACED, PLANNED, STATUSES, CANCELLED
 )
-from ..models.trip import NOT_DISPATCHED
+from ..models.trip import NOT_DISPATCHED, OPEN
 from ..planning import assign_to_trip, leave_trip
 from ..models.user import MANAGER
+
 
 bp = Blueprint("orders", __name__, url_prefix="/api/orders")
 
@@ -28,7 +30,7 @@ bp = Blueprint("orders", __name__, url_prefix="/api/orders")
 # Planned -> Out for Delivery through Dispatch, so no Order is ever Planned without a Trip.
 TRANSITIONS = {
     PLACED: {MANUAL_REVIEW},
-    PLANNED: {PLACED, MANUAL_REVIEW},  # taken back off its Trip, while that hasn't been dispatched
+    PLANNED: {PLACED, MANUAL_REVIEW},  # taken back off its (still open) Trip
     OUT_FOR_DELIVERY: {DELIVERED, DELIVERY_FAILED},
     DELIVERY_FAILED: {PLACED, MANUAL_REVIEW},
     MANUAL_REVIEW: {PLACED},
@@ -76,7 +78,7 @@ def place_order(payment):
             product_id=p.product_id, name=p.name, unit_price=p.price, weight_lb=p.weight_lb,
             quantity=line.quantity,
         ))
-        p.stock_qty -= line.quantity
+        inventory.change_stock(p, -line.quantity, inventory.SALE, user_id=payment.user_id, order=order)
         cart.lines.remove(line)
     db.session.add(order)
     db.session.flush()
@@ -161,7 +163,7 @@ def prepare_order(order_id):
     return jsonify(order=order.to_dict(), trip=trip.to_dict())
 
 
-@bp.post("/<order_id>/override")
+@bp.post("/<int:order_id>/override")
 @require_role(MANAGER)
 def override_order(order_id):
     # T20 — Order Override. Owner: Nateras Jorge.
@@ -186,13 +188,64 @@ def override_order(order_id):
     if data.get("confirmed") is not True:
         return jsonify(error="INVALID_OVERRIDE"), 400
 
-    # Step 4: Find the order.
-    # TODO: Connect to the Order model.
+    # Step 4: Find the order, locked: two Managers cancelling at once each saw it uncancelled, so it
+    # was cancelled, restocked, audited and emailed once per request (tests/test_stress_concurrency.py).
+    order = db.session.get(Order, order_id, with_for_update=True, populate_existing=True)
+
+    if order is None:
+        return jsonify(error="ORDER_NOT_FOUND"), 404
 
     # Step 5: Apply the approved override.
-    # TODO: Validate action and current order status.
+    action = action.strip().lower()
+    reason = reason.strip()
 
-    # Step 6: Record the manager and reason.
-    # TODO: Save the audit record.
+    if action != "cancel":
+        return jsonify(error="INVALID_OVERRIDE_ACTION"), 400
 
-    return jsonify(error="not_implemented"), 501
+    # Do not cancel completed or already cancelled orders.
+    if order.status in (DELIVERED, CANCELLED):
+        return jsonify(error="INVALID_ORDER_STATUS"), 409
+
+    # Do not cancel orders on an active delivery trip.
+    if order.trip_id is not None:
+        trip = db.session.get(Trip, order.trip_id)
+        if trip is not None and trip.status != OPEN:
+            return jsonify(error="INVALID_ORDER_STATUS"), 409
+
+    previous_status = order.status
+
+    # Remove the order from an open trip.
+    order.trip_id = None
+    order.status = CANCELLED
+
+    # Put the cancelled items back in Stock, logged as CANCEL (T05/T12), in the same commit.
+    inventory.return_order_stock(order, user_id=current_user.id, note=reason[:inventory.NOTE_MAX])
+
+
+    # Step 6: Create a persistent audit record.
+    audit = OrderOverrideAudit(
+        order_id=order.id,
+        manager_id=current_user.id,
+        action=action,
+        previous_status=previous_status,
+        new_status=order.status,
+        reason=reason
+    )
+
+    db.session.add(audit)
+
+    # Save the order update and audit record together.
+    db.session.commit()
+
+
+    notifications.notify_status_change(order)
+
+    return jsonify(
+        message="Order override successful",
+        orderId=order.id,
+        action=action,
+        previousStatus=previous_status,
+        status=order.status,
+        managerId=current_user.id,
+        reason=reason
+    ), 200

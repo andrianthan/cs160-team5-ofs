@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { listOrders, prepareOrder, setOrderStatus, type Order, type OrderStatus } from "../api/orders";
+import { listOrders, prepareOrder, setOrderStatus, cancelOrder, type Order, type OrderStatus } from "../api/orders";
+
+import { useAuth } from "@ofs/shared";
 
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
@@ -23,6 +25,8 @@ function ago(iso: string): string {
 }
 
 export default function OrderQueuePage() {
+    const { user } = useAuth();
+    const isManager = user?.role === "manager";
     const [tab, setTab] = useState<OrderStatus>("placed");
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
@@ -86,6 +90,41 @@ export default function OrderQueuePage() {
         });
 
     const current = TABS.find((t) => t.status === tab)!;
+    const handleCancel = async (order: Order) => {
+        if (!isManager) return;
+
+        const reason = window.prompt(
+            `Why are you cancelling Order #${order.id}?`
+        );
+
+        if (reason === null) return;
+
+        if (!reason.trim()) {
+            setError("A cancellation reason is required.");
+            return;
+        }
+
+        const confirmed = window.confirm(
+            `Are you sure you want to cancel Order #${order.id}? This action cannot be undone.`
+        );
+
+        if (!confirmed) return;
+
+        await act(order.id, async () => {
+            const result = await cancelOrder(order.id, reason.trim());
+
+            return result.ok
+                ? {
+                    ok: true,
+                    message: `Order #${order.id} cancelled successfully.`,
+                }
+                : {
+                    ok: false,
+                    message: result.data.message ?? "Cancellation failed.",
+                };
+        });
+    };
+
     const button = "px-3 py-1.5 rounded-full text-sm font-medium cursor-pointer disabled:opacity-50 transition-colors duration-200";
 
     return (
@@ -154,6 +193,17 @@ export default function OrderQueuePage() {
                                     </div>
 
                                     <div className="flex flex-wrap gap-2">
+                                        {isManager && (
+                                            <button
+                                                type="button"
+                                                disabled={busy}
+                                                onClick={() => void handleCancel(order)}
+                                                className={`${button} bg-red-50 text-red-700 hover:bg-red-100`}
+                                            >
+                                                Cancel Delivery
+                                            </button>
+                                        )}
+
                                         {order.status === "placed" && (
                                             <>
                                                 <button

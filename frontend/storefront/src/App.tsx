@@ -1,3 +1,4 @@
+import TrackOrdersPage from "./pages/TrackOrdersPage";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, NavLink } from "react-router-dom";
 import { AuthProvider, RequireAuth, useAuth } from "@ofs/shared/auth";
 import {
@@ -5,7 +6,6 @@ import {
   AppHeader,
   BrandMark,
   NavPill,
-  PageStub,
 } from "@ofs/shared/components";
 
 import { CartProvider } from "./CartContext";
@@ -16,6 +16,7 @@ import BrowsePage from "./pages/BrowsePage";
 import CartPage from "./pages/CartPage";
 import CartMenu from "./components/CartMenu";
 import CheckOutPage from "./pages/CheckOutPage";
+import OrdersPage from "./pages/OrdersPage";
 
 function Nav() {
   const { user } = useAuth();
@@ -28,6 +29,7 @@ function Nav() {
     >
       <NavPill to="/browse">Browse</NavPill>
       <CartMenu key={pathname} />
+      <NavPill to="/orders">Orders</NavPill>
       <NavPill to="/track">Track</NavPill>
       {user && <AccountMenu />}
       {user === null && (
@@ -78,10 +80,18 @@ export default function App() {
               }
             />
             <Route
+              path="/orders"
+              element={
+                <RequireAuth>
+                  <OrdersPage />
+                </RequireAuth>
+              }
+            />
+            <Route
               path="/track"
               element={
                 <RequireAuth>
-                  <PageStub title="Track Orders" task="T16" owner="Jorge" />
+                  <TrackOrdersPage />
                 </RequireAuth>
               }
             />

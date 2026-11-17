@@ -7,6 +7,11 @@ from app.models import Trip
 from test_trips import CITY_HALL, NEAR_CITY_HALL, make_order, make_user, prepare, staff  # noqa: F401
 
 
+@pytest.fixture(autouse=True)
+def no_mapbox(app):
+    app.config["MAPBOX_ACCESS_TOKEN"] = None  # never hit the real API from tests
+
+
 class FakeResp:
     def __init__(self, status, data):
         self.status_code, self._data = status, data

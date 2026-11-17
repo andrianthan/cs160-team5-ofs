@@ -9,6 +9,7 @@ from .. import notifications
 from ..extensions import db
 from ..models import Payment
 from ..models.payment import CANCELED, FAILED, PENDING, REFUNDED, SUCCEEDED
+from ..models.delivery_settings import deliveries_paused
 from .addresses import geocode, inside_delivery_zone
 from .cart import validate_cart_for_checkout
 from .orders import place_order
@@ -160,6 +161,14 @@ def create_payment():
         if existing.user_id != current_user.id:
             return _error("idempotency_conflict", "That key is already in use.", 409)
         return jsonify(_view(existing)), 200
+
+    # Existing idempotent requests remain retrievable.
+    if deliveries_paused():
+        return _error(
+            "delivery_paused",
+            "Deliveries are temporarily paused. Please try again later.",
+            503
+        )
 
     address = body.get("address")
     address = address.strip() if isinstance(address, str) else ""

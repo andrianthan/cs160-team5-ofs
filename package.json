@@ -13,5 +13,9 @@
     "build": "npm run build -w storefront && npm run build -w staff-dashboard",
     "typecheck": "npm run typecheck -w @ofs/shared && npm run typecheck -w storefront && npm run typecheck -w staff-dashboard",
     "lint": "npm run lint -w @ofs/shared && npm run lint -w storefront && npm run lint -w staff-dashboard"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.119.0"
   }
 }

@@ -62,8 +62,13 @@ tables and their data; use it only on a backed-up/disposable database.
   queue and can ride a later trip, and its first stop stays as history.
 - Indexes support catalog filtering, customer/order queues, inventory history, and routes.
 - Pending payments allow a null order_id; linked payments use a unique foreign key.
-- InventoryLog storage is ready; T05/T12 must write sale/restock/cancel entries in the
-  same transaction as stock changes. The current demo seed is unchanged and does not write inventory logs.
+- Every Stock change writes an InventoryLog row in the same transaction, through
+  `app/inventory.py` (T05/T12): SALE when checkout places an Order, RESTOCK / RETURN / CORRECTION
+  when a Manager edits Stock (`PATCH /api/products/<id>` with optional `stock_reason` and
+  `stock_note`), and CANCEL when an Order Override puts a cancelled Order's items back. Managers read
+  it at `GET /api/products/<id>/inventory-log`. Creating a product logs nothing; its starting Stock
+  is the first row's before_qty. A product with orders or Stock history can't be deleted, only
+  deactivated. The demo seed does not write inventory logs.
 - Address CRUD, robot simulation, route population, tracking, and
   delivery-pause enforcement remain their feature owners' integration work.
 - Route JSON uses PostgreSQL JSONB and SQLite JSON for local tests.
@@ -87,6 +92,25 @@ current APIs instead of renaming their working columns as part of a database tas
 Order numbers/status audit history, richer profile fields, and optional address
 linking need agreement with their feature owners before changing the API contract.
 The LLD should be reconciled with these decisions before final submission.
+
+## Supabase
+
+The team's shared database is a Supabase PostgreSQL project; see the README for connecting.
+
+- **Row-level security:** `0003_enable_rls` turns RLS on for every table, with no policies.
+  Supabase's Data API (reachable with the public anon key) then sees no rows and can't write;
+  the backend connects as the tables' owner, which RLS doesn't apply to. A new table must enable
+  RLS in its own migration (`ALTER TABLE ... ENABLE ROW LEVEL SECURITY`), and
+  `test_every_table_has_row_level_security` fails on PostgreSQL if it doesn't. Views and database
+  functions run with their owner's rights and would bypass RLS, so don't add one without a review.
+  Disabling the Data API in the dashboard (Project Settings → Data API) is a second layer.
+- **Connections:** `Config.POSTGRES_ENGINE_OPTIONS` checks pooled connections before reuse
+  (Supabase drops idle ones) and caps each backend process at 5, since the free tier's
+  connection limit is shared by every teammate.
+- **Changing the schema:** only run `db upgrade` against Supabase after the migration is merged
+  to main, or teammates' code won't match the shared tables.
+- **Testing on PostgreSQL:** `TEST_POSTGRES_URL=<url> pytest tests/test_database_schema.py` works
+  against Supabase too; each test uses a throwaway `ofs_test_*` schema and drops it.
 
 ## Verification
 

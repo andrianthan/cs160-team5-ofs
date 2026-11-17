@@ -73,3 +73,25 @@ export async function prepareOrder(id: number) {
 export async function setOrderStatus(id: number, status: OrderStatus) {
     return friendly(await apiRequest<Order>(`/api/orders/${id}/status`, jsonRequest("PATCH", { status })));
 }
+
+//Manager order cancellation
+export async function cancelOrder(id: number, reason: string) {
+    return friendly(
+        await apiRequest<{
+            message: string;
+            orderId: number;
+            action: string;
+            previousStatus: string;
+            status: OrderStatus;
+            managerId: number;
+            reason: string;
+        }>(
+            `/api/orders/${id}/override`,
+            jsonRequest("POST", {
+                action: "cancel",
+                reason,
+                confirmed: true,
+            })
+        )
+    );
+}

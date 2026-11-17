@@ -1,5 +1,8 @@
 import os
 
+from dotenv import load_dotenv
+
+load_dotenv()
 
 class Config:
     """Base config, read from environment. See .env.example for the full list."""
@@ -9,6 +12,21 @@ class Config:
         "DATABASE_URL", "postgresql://ofs:ofs@localhost:5432/ofs_dev"
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+    # Connection pool for a remote PostgreSQL (Supabase). create_app() applies these only to
+    # postgresql:// URLs; SQLite (local demo.db, the in-memory test DB) doesn't use a pool like this.
+    POSTGRES_ENGINE_OPTIONS = {
+        # Test each pooled connection before reusing it. Supabase closes idle connections, and
+        # without this the first request after a quiet spell fails with "server closed the
+        # connection unexpectedly".
+        "pool_pre_ping": True,
+        # Replace connections older than 5 minutes before the server drops them.
+        "pool_recycle": 300,
+        # At most 5 connections per backend process (default is 15). Supabase's free tier allows
+        # only a few dozen in total, shared by every teammate's backend and the email threads.
+        "pool_size": 3,
+        "max_overflow": 2,
+    }
 
     STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY")
     STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET")
@@ -51,6 +69,7 @@ class TestConfig(Config):
     NOTIFICATIONS_ASYNC = False
     NOTIFY_RETRY_DELAY_S = 0
     ROBOT_SIM_ASYNC = False
+    MAPBOX_ACCESS_TOKEN = None  # tests never call the real Mapbox
     ROBOT_SIM_TICK_S = 0
     ROBOT_SIM_DWELL_S = 0
     ROBOT_SIM_STEPS = 2

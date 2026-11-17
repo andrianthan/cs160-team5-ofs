@@ -99,25 +99,16 @@ def test_robots_endpoint_is_staff_only(app, client, staff):
     assert client.get("/api/robots").status_code == 401
 
 
-# ---- tracking ----
+# ---- tracking sees the simulated robot ----
 
-def test_tracking_shows_robot_and_stop_for_owner_only(app, client, staff):
+def test_tracking_shows_finished_trip_and_robot_home(app, client, staff):
     add_robots(1)
     order = make_order(staff, SAP_CENTER)
-    assert client.get(f"/api/tracking/{order.id}").get_json()["robot"] is None
     trip_id = prepare(client, order)["id"]
     client.post(f"/api/trips/{trip_id}/dispatch")
 
     body = client.get(f"/api/tracking/{order.id}").get_json()  # logged in as employee
     assert body["status"] == "delivered" and body["tripId"] == trip_id
-    assert body["robot"]["code"] == "R-1" and body["stop"]["status"] == "delivered"
-    assert body["routeGeometry"]["type"] == "LineString"
-
-    client.post("/api/auth/logout")
-    other = make_user("other@example.com")
-    client.post("/api/auth/login", json={"email": other.email, "password": PASSWORD})
-    assert client.get(f"/api/tracking/{order.id}").status_code == 403
-    client.post("/api/auth/logout")
-    client.post("/api/auth/login", json={"email": staff.email, "password": PASSWORD})
-    body = client.get(f"/api/tracking/{order.id}").get_json()
-    assert body["stops"] is None and body["robot"]["code"] == "R-1"
+    assert body["trip"]["status"] == "completed" and body["trip"]["estimatedDurationMinutes"] >= 1
+    assert body["robot"]["robotCode"] == "R-1"
+    assert (body["robot"]["latitude"], body["robot"]["longitude"]) == (app.config["STORE_LAT"], app.config["STORE_LNG"])

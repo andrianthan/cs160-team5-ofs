@@ -47,5 +47,8 @@ node_modules/
 frontend/*/dist/
 
 
+# Playwright MCP scratch output
+.playwright-mcp/
+
 # OS
 Thumbs.db

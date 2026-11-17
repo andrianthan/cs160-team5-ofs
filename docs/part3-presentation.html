@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Basil — Part III Presentation (12 min)</title>
+<style>
+  :root{
+    --green:#1f6f43; --green-dark:#14512f; --gold:#c9a227;
+    --cream:#faf7f0; --ink:#23201b; --muted:#6b6459;
+    --line:#e3ddd0; --card:#fffdf9; --red:#b3261e; --redbg:#fdf1f0;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:#2a2622; color:var(--ink);
+    font:17px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Inter,Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .deck{height:100vh;display:flex;align-items:center;justify-content:center}
+  .slide{
+    display:none; width:min(1180px,96vw); height:min(680px,92vh);
+    background:var(--cream); border-radius:18px; overflow:hidden;
+    box-shadow:0 18px 60px rgba(0,0,0,.45);
+    flex-direction:column; position:relative;
+  }
+  .slide.on{display:flex}
+  .pad{padding:38px 46px 30px;flex:1;overflow:auto}
+  .head{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:18px}
+  h1{font-size:52px;margin:0 0 6px;letter-spacing:-1.4px;line-height:1.05}
+  h2{font-size:34px;margin:0 0 4px;letter-spacing:-.7px;line-height:1.12}
+  .kicker{font-size:12px;text-transform:uppercase;letter-spacing:1.4px;color:var(--green);font-weight:700}
+  .sub{color:var(--muted);font-size:16px}
+  .time{
+    flex:none;font:600 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+    background:#f0ebdd;border:1px solid var(--line);color:var(--green-dark);
+    padding:7px 11px;border-radius:999px;white-space:nowrap;
+  }
+  .lede{font-size:21px;line-height:1.5;max-width:70ch}
+  .foot{
+    padding:12px 46px 16px;border-top:1px solid var(--line);
+    display:flex;justify-content:space-between;align-items:center;
+    font-size:12.5px;color:var(--muted);
+  }
+  .bar{height:4px;background:var(--green);border-radius:3px;flex:1;margin:0 14px;max-width:260px}
+  .bar i{display:block;height:100%;background:var(--gold);border-radius:3px}
+  ul.big{font-size:20px;line-height:1.62;margin:10px 0 0;padding-left:22px}
+  ul.big li{margin:9px 0}
+  ul.big li b{color:var(--green-dark)}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:14px}
+  .cols3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:15px 17px}
+  .card h3{margin:0 0 8px;font-size:16px;display:flex;align-items:center;gap:8px}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--green);flex:none}
+  .dot.gold{background:var(--gold)} .dot.grey{background:#a9a29a} .dot.red{background:var(--red)}
+  .card p{margin:0;font-size:14.5px;color:#3c372f;line-height:1.5}
+  .card code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#f1ece0;padding:1px 5px;border-radius:5px;font-size:12.5px}
+  .shot{max-width:100%;max-height:415px;width:auto;height:auto;border-radius:11px;border:1px solid var(--line);display:block;margin:0 auto}
+  table{width:100%;border-collapse:collapse;font-size:15px;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-top:10px}
+  th,td{padding:9px 13px;text-align:left;border-bottom:1px solid var(--line)}
+  th{background:#f3efe4;font-size:11px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted)}
+  tr:last-child td{border-bottom:0}
+  .pill{display:inline-block;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px}
+  .pill.ok{background:#e3f2e8;color:var(--green-dark)}
+  .pill.warn{background:#fbf0d4;color:#7a5c05}
+  .pill.no{background:#fbe3e1;color:var(--red)}
+  .team{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-top:20px}
+  .person{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:12px 14px}
+  .person b{display:block;font-size:15px}
+  .person span{font-size:13px;color:var(--muted)}
+  .warnbox{background:#fff8e6;border:1px solid #e8d59a;border-radius:12px;padding:12px 16px;font-size:14.5px;color:#5a4a17;margin-top:14px}
+  .warnbox b{color:#3d3208}
+  .say{background:var(--green);color:#fff;border-radius:12px;padding:14px 18px;font-size:16px;line-height:1.55;margin-top:12px}
+  .say b{color:var(--gold)}
+  .notes{
+    display:none; position:absolute; inset:0; background:#241f1a; color:#e8e2d5;
+    padding:34px 42px; font-size:17px; line-height:1.6; overflow:auto; z-index:5;
+  }
+  .notes.on{display:block}
+  .notes h4{margin:0 0 12px;font-size:12px;letter-spacing:1.4px;text-transform:uppercase;color:var(--gold)}
+  .notes li{margin:7px 0}
+  .notes .say{background:#33302a;color:#e8e2d5;border-left:3px solid var(--gold);border-radius:0 10px 10px 0}
+  .hint{position:fixed;bottom:12px;right:16px;color:#8d8578;font-size:11.5px;z-index:9}
+  .grid-ov{display:none;position:fixed;inset:0;background:#221f1b;z-index:20;padding:22px;overflow:auto}
+  .grid-ov.on{display:block}
+  .grid-ov .mini{
+    background:var(--cream);border-radius:9px;padding:14px;margin-bottom:12px;
+    font-size:13px;cursor:pointer;border:2px solid transparent;
+  }
+  .grid-ov .mini:hover{border-color:var(--gold)}
+  .grid-ov .mini b{display:block;font-size:15px;margin-bottom:5px}
+  .grid-ov h5{color:#e8e2d5;margin:0 0 14px;font-size:13px;letter-spacing:1.2px;text-transform:uppercase}
+  @media print{
+    body{background:#fff}
+    .slide{display:flex!important;height:auto;page-break-after:always;box-shadow:none;margin-bottom:8mm;width:100%}
+    .hint,.grid-ov{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+<!-- 1 -->
+<section class="slide on">
+  <div class="pad">
+    <div class="kicker">CS 160 · Part III · Group 5</div>
+    <h1 style="margin-top:14px">Basil</h1>
+    <div class="sub" style="font-size:22px;margin-bottom:22px">Organic groceries, delivered by robot &mdash; by OFS</div>
+    <div class="lede">An on-demand grocery delivery service: a customer orders on the storefront, pays
+      with Stripe, staff group the order into a Trip, and a Robot drives it across Downtown San Jose &mdash;
+      with live tracking, email notifications and manager reports.</div>
+    <div class="team">
+      <div class="person"><b>Kelvin Phat</b><span>Storefront, cart UI, staff dashboard</span></div>
+      <div class="person"><b>Andrian Than</b><span>Payments, cart &amp; pricing, reports, demo</span></div>
+      <div class="person"><b>Jorge Nateras</b><span>Tracking &amp; map, delivery pause, override</span></div>
+      <div class="person"><b>Ethan Notario Rodriguez</b><span>Trip grouping, route optimizer, robot fleet</span></div>
+      <div class="person"><b>Shresthkumar Karnani</b><span>Orders lifecycle, inventory log, stress tests</span></div>
+      <div class="person"><b>Sharma Anuj</b><span>Schema &amp; migrations, seed data, auth backend</span></div>
+    </div>
+  </div>
+  <div class="foot"><span>Basil by OFS</span><div class="bar"><i style="width:4%"></i></div><span id="f1">0:00 / 12:00</span></div>
+  <div class="notes"><h4>Speaker notes &mdash; 0:00 to 0:40</h4>
+    <div class="say"><b>Say:</b> "We are Team 5. This is Basil &mdash; organic groceries delivered by robot. In the next twelve
+    minutes we will show the working product end to end: a real Stripe test payment, staff dispatching a robot,
+    and the customer watching it on the map."</div>
+    <ul>
+      <li>Do <b>not</b> read the team list aloud. It is on screen for the grader.</li>
+      <li>Set the frame: this is Part III, 270 of roughly 500 points, due 11/23.</li>
+      <li>Total budget: 40 seconds here. Move.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="slide">
+  <div class="pad">
+    <div class="head">
+      <div><div class="kicker">The problem</div><h2>Ordering groceries should not mean driving to a store</h2></div>
+      <div class="time">0:40 &ndash; 1:40 &middot; 1 min</div>
+    </div>
+    <div class="cols">
+      <div>
+        <ul class="big">
+          <li>Same-day delivery, but the delivery zone is <b>the whole city</b></li>
+          <li>Orders are grouped into <b>Trips</b> so one Robot can carry several</li>
+          <li>The customer watches the Robot on a <b>live map</b> instead of guessing</li>
+          <li>Every state change sends an <b>email</b> &mdash; no app to open</li>
+        </ul>
+      </div>
+      <div>
+        <div class="card"><h3><span class="dot"></span>Business rules we enforce in code</h3>
+          <p>Delivery fee kicks in at <b>20 lb</b>. A Trip carries at most <b>10 Orders</b> or <b>200 lb</b>.
+             An Order over <b>200 lb</b> goes to Manual Review instead of being dispatched.
+             A Trip locks <b>30 minutes</b> after its <b>oldest Order</b> was placed, so it still ships.</p>
+        </div>
+        <div class="card" style="margin-top:12px"><h3><span class="dot gold"></span>What we had to get right</h3>
+          <p>Idempotent payments, a zone polygon checked against geocoded addresses,
+             and a delivery-pause switch that blocks checkout for everyone.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>Basil by OFS</span><div class="bar"><i style="width:14%"></i></div><span id="f2"></span></div>
+  <div class="notes"><h4>Speaker notes &mdash; 0:40 to 1:40</h4>
+    <div class="say"><b>Say:</b> "The interesting part is not the storefront, it is the delivery side. We enforce a
+    handful of business rules in the backend &mdash; weight limits, trip capacity, a dispatch deadline &mdash; and the
+    Robot is a simulated fleet, so the whole pipeline is demonstrable end to end."</div>
+    <ul>
+      <li>The four rules are BR-1 through BR-9 in our Part II document. If asked, name them, don't read them.</li>
+      <li>If someone asks about <b>real</b> robots: the fleet is simulated in-process (T15). We chose simulation so
+      the delivery pipeline is testable without hardware &mdash; the Robot state machine is identical either way.</li>
+      <li>Keep this to one minute. The live demo is the payload.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="slide">
+  <div class="pad">
+    <div class="head">
+      <div><div class="kicker">Architecture</div><h2>Flask + Postgres behind two React apps</h2></div>
+      <div class="time">1:40 &ndash; 2:30 &middot; 50 s</div>
+    </div>
+    <div class="cols3">
+      <div class="card"><h3><span class="dot"></span>Backend</h3>
+        <p>Flask blueprints: auth, products, cart, addresses, payments, orders, trips, tracking, reports, robots, settings.
+           <code>pytest</code> for the test suite. Alembic migrations for every schema change, checked in CI.</p></div>
+      <div class="card"><h3><span class="dot"></span>Data</h3>
+        <p>PostgreSQL on Supabase, 16 tables, RLS migration, integrity checks in GitHub Actions.
+           SQLite for local dev and demos, so the demo database can be reset in seconds.</p></div>
+      <div class="card"><h3><span class="dot"></span>Frontends</h3>
+        <p>A customer <b>storefront</b> and a staff <b>dashboard</b> on a shared React/TypeScript package.
+           Server-side pricing and weight, so the client never decides what an Order costs.</p></div>
+    </div>
+    <div class="cols3" style="margin-top:14px">
+      <div class="card"><h3><span class="dot gold"></span>Mapbox</h3>
+        <p>Geocoding for address &rarr; lat/lng, Search JS autofill in checkout, and the Optimization API
+           for the Trip route and per-stop ETAs.</p></div>
+      <div class="card"><h3><span class="dot gold"></span>Stripe</h3>
+        <p>PaymentIntents with idempotency keys, a signed webhook that creates the Order, plus a polling
+           fallback so a dropped webhook cannot strand a paid Order.</p></div>
+      <div class="card"><h3><span class="dot gold"></span>SMTP</h3>
+        <p>Emails on placed / out for delivery / delivered / failed / manual review, deduped per
+           (Order, event, recipient) and retried three times.</p></div>
+    </div>
+  </div>
+  <div class="foot"><span>Basil by OFS</span><div class="bar"><i style="width:21%"></i></div><span id="f3"></span></div>
+  <div class="notes"><h4>Speaker notes &mdash; 1:40 to 2:30</h4>
+    <div class="say"><b>Say:</b> "One Flask backend serves a customer storefront and a staff dashboard.
+    Stripe, Mapbox and SMTP are integrated as real services, not mocks."</div>
+    <ul>
+      <li><b>Be honest about the customer map:</b> it is Leaflet with OpenStreetMap tiles, not Mapbox GL.
+      Mapbox does the geocoding, the address autofill and the route optimisation. Say so plainly &mdash;
+      it is more credible than claiming Mapbox GL, which our HLD originally named but we did not ship.</li>
+      <li>Also honest: Stripe is a PaymentIntent with the Elements form, not a hosted Checkout page.</li>
+      <li>Point out the webhook &rarr; Order path; that is the spine of the whole demo.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="slide">
+  <div class="pad">
+    <div class="head">
+      <div><div class="kicker">Live demo 1 of 4</div><h2>Browse &rarr; cart &rarr; the pricing rules</h2></div>
+      <div class="time">2:30 &ndash; 4:00 &middot; 90 s</div>
+    </div>
+    <div class="cols">
+      <div>
+        <ul class="big" style="font-size:18px">
+          <li>Log in as the seeded customer</li>
+          <li>Add items &mdash; the cart shows <b>live weight</b> and <b>live fee</b></li>
+          <li>Push past 20 lb and the <b>$10 delivery fee</b> appears</li>
+          <li>Past 200 lb the checkout is <b>blocked</b>, not silently accepted</li>
+        </ul>
+        <div class="warnbox"><b>Why it matters:</b> weight and fee are computed on the server from the
+          Product table, so the price cannot be tampered with from the browser.</div>
+      </div>
+      <div>
+        <img class="shot" src="images/checkout-stripe.png" alt="Checkout page with the Stripe payment form">
+        <div class="sub" style="margin-top:8px">Checkout &mdash; Mapbox address, live Stripe Elements form.</div>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>Basil by OFS</span><div class="bar"><i style="width:33%"></i></div><span id="f4"></span></div>
+  <div class="notes"><h4>Speaker notes &mdash; 2:30 to 4:00</h4>
+    <div class="say"><b>Say:</b> "Weight and fee are computed server-side. Watch the fee appear the moment the cart
+    crosses twenty pounds &mdash; no reloading, no client-side math we could get wrong."</div>
+    <ul>
+      <li>Prefer a cart that is already over 20 lb so you can point at the fee without adding eight items.
+      The seed gives you 3 items in the cart (5.2 lb); add Russet Potatoes (5 lb) <b>three times</b> to reach 20.2 lb and cross the line.</li>
+      <li>The &gt;200 lb case goes to <b>Manual Review</b> and emails staff &mdash; mention it, do not demo it
+      live, it needs an unusually heavy cart and risks a dead end on stage.</li>
+      <li>Do not open the weight-and-fee section in devtools. Point at the number and move.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="slide">
+  <div class="pad">
+    <div class="head">
+      <div><div class="kicker">Live demo 2 of 4</div><h2>A real Stripe test-mode payment</h2></div>
+      <div class="time">4:00 &ndash; 5:30 &middot; 90 s</div>
+    </div>
+    <div class="cols">
+      <div>
+        <ul class="big" style="font-size:18px">
+          <li>Type the delivery address &mdash; Mapbox autofill, then <b>geocoded and zone-checked</b></li>
+          <li>Card <code>4242 4242 4242 4242</code>, any future expiry, any CVC</li>
+          <li>Pay &rarr; <b>Stripe webhook</b> fires &rarr; the Order is created</li>
+          <li>Customer receives the <b>order confirmed</b> email</li>
+        </ul>
+        <div class="card" style="margin-top:6px"><h3><span class="dot"></span>What we got right here</h3>
+          <p>Idempotency keys mean a double click cannot charge twice. If the webhook is late, the
+             storefront polls and the Order is still created &mdash; a paid Order is never stranded.</p>
+        </div>
+      </div>
+      <div>
+        <div class="card"><h3><span class="dot red"></span>One deliberate caveat</h3>
+          <p>We use Stripe <b>PaymentIntents with the Elements form</b> embedded in our own checkout,
+             not a hosted Checkout page. It is a stricter integration: we own the UI, and we have to
+             handle the failure paths ourselves.</p></div>
+        <div class="card" style="margin-top:12px"><h3><span class="dot gold"></span>Test cards</h3>
+          <p><code>4242 4242 4242 4242</code> &mdash; pays.<br>
+             <code>4000 0000 0000 0002</code> &mdash; declined.</p></div>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>Basil by OFS</span><div class="bar"><i style="width:46%"></i></div><span id="f5"></span></div>
+  <div class="notes"><h4>Speaker notes &mdash; 4:00 to 5:30</h4>
+    <div class="say"><b>Say:</b> "This is a real Stripe test-mode payment. The webhook comes back signed,
+    the backend verifies the signature, and only then does it create the Order."</div>
+    <ul>
+      <li><b>Rehearse this one.</b> The Stripe Elements card field is a collapsed accordion &mdash; click
+      <b>Card</b> to expand it before typing the number, or the keystrokes go into a hidden field.</li>
+      <li>Pay is a real button in a Stripe iframe. Click once and wait; the storefront says
+      <i>"Payment received. Confirming your order."</i></li>
+      <li>If the payment stalls, do not click Pay again &mdash; it will be declined as a duplicate.
+      Move on to the staff screen and come back.</li>
+      <li>Have the declined card ready as a backup answer, not a backup demo.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="slide">
+  <div class="pad">
+    <div class="head">
+      <div><div class="kicker">Live demo 3 of 4</div><h2>Staff prepare &rarr; dispatch &rarr; the Robot goes</h2></div>
+      <div class="time">5:30 &ndash; 7:30 &middot; 2 min</div>
+    </div>
+    <div class="cols">
+      <div>
+        <ul class="big" style="font-size:18px">
+          <li>Prep Queue: staff mark the Order <b>prepared</b></li>
+          <li>It is assigned to a <b>Trip</b> &mdash; grouped by proximity, capped at 10 Orders / 200 lb</li>
+          <li>Dispatch page: the fleet, the route, the ETAs</li>
+          <li>Click <b>Dispatch</b> &rarr; a Robot is assigned and starts driving</li>
+          <li>Order flips to <b>Out for delivery</b>, customer is emailed</li>
+        </ul>
+      </div>
+      <div>
+        <img class="shot" src="images/dispatch-mid.png" alt="Staff Dispatch page with the robot fleet and trips">
+        <div class="sub" style="margin-top:8px">Staff Dispatch &mdash; fleet state, trips, route and ETAs.</div>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>Basil by OFS</span><div class="bar"><i style="width:63%"></i></div><span id="f6"></span></div>
+  <div class="notes"><h4>Speaker notes &mdash; 5:30 to 7:30</h4>
+    <div class="say"><b>Say:</b> "Staff prepare the Order, the system groups it into a Trip and optimises the
+    route through Mapbox. Dispatch assigns a Robot, and from this moment the customer can watch it move."</div>
+    <ul>
+      <li>Dispatch is a <b>Manager or Employee</b> action, and the robot simulation runs in the background
+      thread, so the UI stays responsive.</li>
+      <li>The Robot's state machine is available, reserved, loading, out_for_delivery, returning, offline.
+      If asked how you would handle a Robot failing mid-trip: it goes <b>offline</b>, the trip stops where it is,
+      and staff take it from there.</li>
+      <li>If a Trip has not locked yet, the Dispatch button may be unavailable &mdash; that is the 30-minute
+      rule working. Say so rather than hunting for the button.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="slide">
+  <div class="pad">
+    <div class="head">
+      <div><div class="kicker">Live demo 4 of 4</div><h2>The customer watches it on the map</h2></div>
+      <div class="time">7:30 &ndash; 8:30 &middot; 1 min</div>
+    </div>
+    <div class="cols">
+      <div>
+        <ul class="big" style="font-size:18px">
+          <li>Customer opens <b>Track</b>, picks the Order</li>
+          <li>Live robot position on the map, refreshed every 10 seconds</li>
+          <li>The stage bar advances: placed &rarr; preparing &rarr; out for delivery &rarr; delivered</li>
+          <li>Delivery completes &mdash; <b>email sent</b>, Order marked delivered</li>
+        </ul>
+        <div class="warnbox"><b>Honesty note:</b> the map is Leaflet with OpenStreetMap tiles. Mapbox does the
+          geocoding, the address autofill and the route optimisation. We did not ship Mapbox GL JS.</div>
+      </div>
+      <div>
+        <img class="shot" src="images/customer-map-tracking.png" alt="Customer tracking page showing the robot on the map">
+        <div class="sub" style="margin-top:8px">Customer Track &mdash; robot position, trip and stage.</div>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>Basil by OFS</span><div class="bar"><i style="width:71%"></i></div><span id="f7"></span></div>
+  <div class="notes"><h4>Speaker notes &mdash; 7:30 to 8:30</h4>
+    <div class="say"><b>Say:</b> "This is the customer view of the same Trip. The position updates every ten
+    seconds, and the stage bar tells them where their Order is."</div>
+    <ul>
+      <li><b>Open the Track tab BEFORE you dispatch.</b> The page polls every 10 seconds, so if you open it
+      after the Robot has arrived there is nothing to watch.</li>
+      <li>The Robot drives in a straight line between stops rather than following the road geometry.
+      Say that &mdash; it is a simulation simplification, and it is in our backlog.</li>
+      <li>Both markers are on the map: the Robot and the delivery address.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 8 -->
+<section class="slide">
+  <div class="pad">
+    <div class="head">
+      <div><div class="kicker">Manager reports</div><h2>The metrics are defined once, and the code and the Test Plan agree</h2></div>
+      <div class="time">8:30 &ndash; 9:30 &middot; 1 min</div>
+    </div>
+    <div class="cols">
+      <div>
+        <table>
+          <tr><th>Metric</th><th>Definition</th></tr>
+          <tr><td><b>On-time rate</b></td><td>delivered stops that arrived at or before their ETA, over delivered stops that have one</td></tr>
+          <tr><td><b>Delivery duration</b></td><td>minutes from the Order being placed to the Robot arriving, averaged over those stops</td></tr>
+          <tr><td><b>Trip utilization</b></td><td>average orders per Trip, and the average fill of the Robot limits</td></tr>
+          <tr><td><b>Delivery success rate</b></td><td>Delivered &divide; (Delivered + Delivery Failed)</td></tr>
+        </table>
+      </div>
+      <div>
+        <div class="card"><h3><span class="dot"></span>Why this slide exists</h3>
+          <p>Two Reports computing on-time rate differently is a classic way to lose trust in a dashboard.
+          So the definitions live in exactly one place &mdash; the header of <code>reports.py</code> &mdash;
+          and they are copied verbatim into Part II's Test Plan, which says in two places that the
+          definitions must be identical wherever they appear.</p></div>
+        <div class="card" style="margin-top:12px"><h3><span class="dot gold"></span>Also built</h3>
+          <p>Sales and revenue, average order value, product demand, and an inventory snapshot with
+          low-stock and out-of-stock flags.</p></div>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>Basil by OFS</span><div class="bar"><i style="width:79%"></i></div><span id="f8"></span></div>
+  <div class="notes"><h4>Speaker notes &mdash; 8:30 to 9:30</h4>
+    <div class="say"><b>Say:</b> "Every metric on this slide has one definition, in the code, and the Test Plan
+    quotes it word for word. That was a deliberate correction this week."</div>
+    <ul>
+      <li>Only show the Reports page if time allows &mdash; this slide carries the point on its own.</li>
+      <li>Delivery duration and on-time rate come from real trip stops and ETAs, which only exist now that
+      dispatch works. Before this week they were unmeasurable.</li>
+      <li>If asked about targets: the target numbers are Ethan&rsquo;s section in Part II and are still being set.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 9 -->
+<section class="slide">
+  <div class="pad">
+    <div class="head">
+      <div><div class="kicker">Quality</div><h2>The tests found real bugs, and we fixed them</h2></div>
+      <div class="time">9:30 &ndash; 10:15 &middot; 45 s</div>
+    </div>
+    <div class="cols">
+      <div>
+        <div class="cols" style="grid-template-columns:1fr 1fr;gap:12px">
+          <div class="card"><h3><span class="dot"></span>351 passing</h3><p>Backend <code>pytest</code> suite,
+            in-memory database, never touches the demo data.</p></div>
+          <div class="card"><h3><span class="dot"></span>CI on every PR</h3><p>Schema integrity checks run on
+            GitHub Actions against a real PostgreSQL service.</p></div>
+          <div class="card"><h3><span class="dot gold"></span>Stress tests</h3><p>Access control on every route,
+            junk input on every route, sign-in abuse, concurrent checkout and webhook races.</p></div>
+          <div class="card"><h3><span class="dot gold"></span>Typecheck &amp; lint</h3><p><code>tsc</code> and
+            <code>oxlint</code> across both frontends, as build scripts.</p></div>
+        </div>
+      </div>
+      <div>
+        <div class="card"><h3><span class="dot red"></span>Bugs the stress tests found</h3>
+          <p>&bull; Simultaneous sign-ups with one email returned 500 instead of 409.<br>
+             &bull; Names over 120 characters crashed on PostgreSQL.<br>
+             &bull; NUL bytes in a JSON body were a 500 on PostgreSQL.<br>
+             &bull; Two concurrent Manager cancels restocked the same Order.<br>
+             &bull; The Order Override route accepted a text id where it needed a number.</p></div>
+        <div class="card" style="margin-top:12px"><h3><span class="dot"></span>Also found during this run</h3>
+          <p>The demo database was missing 8 tables, so the delivery-pause settings endpoint returned 500 on
+          every checkout page. Fixed and covered by the reset step in our run-of-show.</p></div>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>Basil by OFS</span><div class="bar"><i style="width:85%"></i></div><span id="f9"></span></div>
+  <div class="notes"><h4>Speaker notes &mdash; 9:30 to 10:15</h4>
+    <div class="say"><b>Say:</b> "Our teammate ran stress tests against every route in the app. They found five
+    real bugs, including two that only appear on PostgreSQL. Those are fixed and in the suite."</div>
+    <ul>
+      <li>Credit Shresthkumar &mdash; the stress tests and the inventory-log work are theirs.</li>
+      <li>The missing-tables bug is worth one sentence: it shows we test the demo path, not just the unit path.</li>
+      <li>Do not read the bug list aloud in full. Two examples is enough.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 10 -->
+<section class="slide">
+  <div class="pad">
+    <div class="head">
+      <div><div class="kicker">Status</div><h2>All twenty backlog tasks are done</h2></div>
+      <div class="time">10:15 &ndash; 11:00 &middot; 45 s</div>
+    </div>
+    <div class="cols">
+      <div>
+        <table>
+          <tr><th>Area</th><th>Tasks</th><th>Status</th></tr>
+          <tr><td>Auth, catalog, inventory</td><td>T03&ndash;T05</td><td><span class="pill ok">done</span></td></tr>
+          <tr><td>Storefront &amp; cart</td><td>T06&ndash;T09</td><td><span class="pill ok">done</span></td></tr>
+          <tr><td>Payments, addresses, orders</td><td>T10&ndash;T12</td><td><span class="pill ok">done</span></td></tr>
+          <tr><td>Planning, routing, robot fleet</td><td>T13&ndash;T15</td><td><span class="pill ok">done</span></td></tr>
+          <tr><td>Tracking, dashboard, reports</td><td>T16, T18, T19</td><td><span class="pill ok">done</span></td></tr>
+          <tr><td>Pause, override, notifications</td><td>T17, T20</td><td><span class="pill ok">done</span></td></tr>
+        </table>
+      </div>
+      <div>
+        <div class="card"><h3><span class="dot gold"></span>What is left is verification, not features</h3>
+          <p>All twenty tasks in the Part II backlog are implemented and merged.
+             The remaining work for this part was proving them against real services:
+             Stripe (done &mdash; a real test-mode payment, webhook signed and verified),
+             Mapbox (done), and SMTP against a live Gmail account.</p></div>
+        <div class="card" style="margin-top:12px"><h3><span class="dot red"></span>Known gaps we are not hiding</h3>
+          <p>&bull; Robots drive in straight lines, not along the road network.<br>
+             &bull; The customer map polls every 10 seconds rather than streaming.<br>
+             &bull; Cancelling an Order sends no customer email &mdash; the event map has no cancel case.</p></div>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>Basil by OFS</span><div class="bar"><i style="width:92%"></i></div><span id="f10"></span></div>
+  <div class="notes"><h4>Speaker notes &mdash; 10:15 to 11:00</h4>
+    <div class="say"><b>Say:</b> "All twenty backlog tasks from Part II are implemented. What was left this week was
+    proving them against the real services, and that is where we are now."</div>
+    <ul>
+      <li>The <b>known gaps</b> card is deliberate. Naming three gaps makes the other seventeen credible.</li>
+      <li>The cancel-email gap is real: <code>STATUS_EVENTS</code> has no cancel case, so a Manager cancel
+      sends no email even though the backlog asked for one.</li>
+      <li>If asked who did what, the per-task history in <code>docs/backlog-history.md</code> has assigned vs built-by
+      for every task, including two where they differ.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 11 -->
+<section class="slide">
+  <div class="pad">
+    <div class="head">
+      <div><div class="kicker">Next</div><h2>Where this goes after 11/23</h2></div>
+      <div class="time">11:00 &ndash; 11:40 &middot; 40 s</div>
+    </div>
+    <div class="cols3">
+      <div class="card"><h3><span class="dot"></span>Part IV &middot; 12/1</h3>
+        <p>Black box testing. Our Part II Test Plan already describes the functional and component
+           test areas &mdash; now we write the actual test cases against the running app.</p></div>
+      <div class="card"><h3><span class="dot"></span>Part V &middot; 12/7</h3>
+        <p>Maintenance and bug fixing, driven by whatever Part IV turns up. The three known gaps
+           above are our starting list.</p></div>
+      <div class="card"><h3><span class="dot"></span>Parts VI &amp; VII</h3>
+        <p>Scrum participation, graded individually &mdash; show up and speak every stand-up &mdash;
+           and the team retrospective.</p></div>
+    </div>
+    <div class="say" style="margin-top:20px"><b>Say:</b> "Black box testing is next, and it starts from a Test Plan
+    we already wrote and agreed on. We are not writing the spec and the tests in the same week &mdash; that was
+    the point of Part II."</div>
+  </div>
+  <div class="foot"><span>Basil by OFS</span><div class="bar"><i style="width:97%"></i></div><span id="f11"></span></div>
+  <div class="notes"><h4>Speaker notes &mdash; 11:00 to 11:40</h4>
+    <ul>
+      <li>One minute, no more. This slide closes the narrative: the Test Plan we wrote is the input to Part IV.</li>
+      <li>If the grader asks about <b>Part VI</b>: every member speaks at every stand-up, and participation is
+      graded individually, so nobody should be quiet.</li>
+      <li>If asked about deployment: the repo has no Apache configuration yet &mdash; it is a known gap we
+      will pick up in Part V.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 12 -->
+<section class="slide">
+  <div class="pad">
+    <div class="kicker">Team 5 &middot; CS 160 &middot; Fall 2026</div>
+    <h1 style="margin-top:16px">Questions?</h1>
+    <div class="lede" style="margin-top:8px">Basil &mdash; organic groceries, delivered by robot.</div>
+    <div class="cols" style="margin-top:26px">
+      <div class="card"><h3><span class="dot"></span>Things we are happy to talk about</h3>
+        <p>&bull; The trip-grouping and 30-minute dispatch rules<br>
+           &bull; The Stripe idempotency and webhook design<br>
+           &bull; The Robot state machine and its failure handling<br>
+           &bull; The stress tests and what they caught</p></div>
+      <div class="card"><h3><span class="dot gold"></span>Things we know are rough</h3>
+        <p>&bull; Straight-line Robot movement, not road routing<br>
+           &bull; 10-second polling on the customer map<br>
+           &bull; No cancellation email yet<br>
+           &bull; The customer map uses Leaflet, not Mapbox GL</p></div>
+    </div>
+    <div class="sub" style="margin-top:24px">Demo, run-of-show and status:
+      <code>docs/demo-run-of-show.md</code> &middot; <code>docs/demo-cheatsheet.html</code> &middot; <code>docs/part3-status.md</code></div>
+  </div>
+  <div class="foot"><span>Basil by OFS</span><div class="bar"><i style="width:100%"></i></div><span id="f12"></span></div>
+  <div class="notes"><h4>Speaker notes &mdash; 11:40 to 12:00</h4>
+    <ul>
+      <li>Leave this slide up during Q&amp;A. It has the rough edges on it, which invites honesty.</li>
+      <li>Have the run-of-show and status docs open in a second tab in case the grader wants a pointer.</li>
+      <li>If a question is about something not built, say so and point at the backlog table rather than guessing.</li>
+    </ul>
+  </div>
+</section>
+
+</div>
+
+<div class="grid-ov" id="ov">
+  <h5>Click a slide &middot; Esc to close</h5>
+  <div id="ovlist"></div>
+</div>
+<div class="hint">&larr;&rarr; navigate &middot; N notes &middot; O overview</div>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const titles = ["Title / team","The problem","Architecture","Demo 1 - cart & pricing","Demo 2 - Stripe payment","Demo 3 - dispatch","Demo 4 - customer map","Reports & metrics","Quality & bugs","All 20 tasks done","Next after 11/23","Questions"];
+  const clock = ["0:00","0:40","1:40","2:30","4:00","5:30","7:30","8:30","9:30","10:15","11:00","11:40"];
+  let i = 0;
+  const totals = ["0:40","1:40","2:30","4:00","5:30","7:30","8:30","9:30","10:15","11:00","11:40","12:00"];
+
+  function show(n){
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach((s, k) => s.classList.toggle('on', k === i));
+    slides.forEach((s, k) => { const f = s.querySelector('.foot span:last-child'); if (f) f.id = 'f' + (k+1); });
+    const f = slides[i].querySelector('.foot span:last-child');
+    if (f) f.textContent = clock[i] + ' / 12:00   (ends ' + totals[i] + ')';
+    history.replaceState(null, '', '#' + (i + 1));
+  }
+  function notes(){ slides[i].querySelector('.notes').classList.toggle('on'); }
+  function overview(){
+    const ov = document.getElementById('ov');
+    if (!ov.classList.contains('on')) {
+      document.getElementById('ovlist').innerHTML = slides.map((s, k) =>
+        '<div class="mini" data-k="' + k + '"><b>' + (k+1) + '. ' + titles[k] + '</b>' + clock[k] + ' &rarr; ' + totals[k] + '</div>').join('');
+      ov.classList.add('on');
+    } else { ov.classList.remove('on'); }
+  }
+  document.addEventListener('keydown', e => {
+    const ov = document.getElementById('ov');
+    if (e.key === 'Escape') { ov.classList.remove('on'); return; }
+    if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); show(i + 1); }
+    if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(i - 1); }
+    if (e.key === 'n' || e.key === 'N') notes();
+    if (e.key === 'o' || e.key === 'O') overview();
+    if (e.key === 'Home') show(0);
+    if (e.key === 'End') show(slides.length - 1);
+  });
+  document.getElementById('ovlist').addEventListener('click', e => {
+    const m = e.target.closest('.mini'); if (!m) return;
+    show(+m.dataset.k); document.getElementById('ov').classList.remove('on');
+  });
+  const h = location.hash.replace('#',''); show(h ? +h - 1 : 0);
+</script>
+</body>
+</html>

@@ -38,7 +38,9 @@ class Config:
     SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD")
     SMTP_FROM = os.environ.get("SMTP_FROM")
     SMTP_STARTTLS = os.environ.get("SMTP_STARTTLS", "1") != "0"
-    SMTP_TIMEOUT_S = 10
+    # Gmail's first TLS handshake can take longer than 10s, which failed the send before the
+    # password was even checked.
+    SMTP_TIMEOUT_S = int(os.environ.get("SMTP_TIMEOUT_S", 30))
 
     # T17: emails go out from a background thread so a slow mail server never delays checkout.
     NOTIFICATIONS_ASYNC = True
@@ -59,9 +61,11 @@ class Config:
     ROBOT_SPEED_KMH = 8.0  # used for ETAs when Mapbox isn't available
     ROBOT_SIM_ENABLED = True  # off: Robots are assigned but never drive (unit tests of Dispatch)
     ROBOT_SIM_ASYNC = True  # run Trips on a background thread; tests run them inline
-    ROBOT_SIM_TICK_S = 1.0  # seconds between simulated position updates (0 = no waiting)
-    ROBOT_SIM_STEPS = 10  # position updates per leg of the route
-    ROBOT_SIM_DWELL_S = 3.0  # time spent at each stop handing over the order
+    # The speed knobs are env-configurable so a demo can slow the Robot down enough to
+    # actually watch it move on the customer map (which refreshes every 10 seconds).
+    ROBOT_SIM_TICK_S = float(os.environ.get("ROBOT_SIM_TICK_S", 1.0))  # seconds between position updates (0 = no waiting)
+    ROBOT_SIM_STEPS = int(os.environ.get("ROBOT_SIM_STEPS", 10))  # position updates per leg of the route
+    ROBOT_SIM_DWELL_S = float(os.environ.get("ROBOT_SIM_DWELL_S", 3.0))  # time spent at each stop handing over the order
 
 
 class TestConfig(Config):

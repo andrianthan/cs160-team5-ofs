@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Basil Demo Cheatsheet</title>
+<style>
+  :root{
+    --green:#1f6f43; --green-dark:#14512f; --gold:#c9a227;
+    --cream:#faf7f0; --ink:#23201b; --muted:#6b6459;
+    --line:#e3ddd0; --card:#fffdf9; --red:#b3261e; --redbg:#fdf1f0;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:32px 20px 80px;
+    background:var(--cream); color:var(--ink);
+    font:16px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Inter,Roboto,sans-serif;
+  }
+  .wrap{max-width:900px;margin:0 auto}
+  header{margin-bottom:26px}
+  h1{font-size:27px;margin:0 0 4px;letter-spacing:-.2px}
+  .sub{color:var(--muted);font-size:14px}
+  h2{
+    font-size:13px;text-transform:uppercase;letter-spacing:.9px;
+    color:var(--green);margin:36px 0 12px;font-weight:700;
+    border-bottom:2px solid var(--line);padding-bottom:6px;
+  }
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:14px}
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:16px 18px;box-shadow:0 1px 2px rgba(0,0,0,.04);
+  }
+  .card h3{margin:0 0 10px;font-size:15px;display:flex;align-items:center;gap:8px}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--green);flex:none}
+  .dot.red{background:var(--red)} .dot.gold{background:var(--gold)} .dot.grey{background:#a9a29a}
+  .row{
+    display:flex;align-items:center;gap:10px;
+    padding:8px 0;border-top:1px dashed var(--line);
+  }
+  .row:first-of-type{border-top:0}
+  .label{
+    font-size:11px;text-transform:uppercase;letter-spacing:.6px;
+    color:var(--muted);width:88px;flex:none;
+  }
+  .val{
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:13px;word-break:break-word;flex:1;
+  }
+  .val.url{color:var(--green-dark);text-decoration:underline}
+  .tag{
+    font-size:10.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;
+    padding:2px 7px;border-radius:999px;flex:none;
+  }
+  .tag.ok{background:#e3f2e8;color:var(--green-dark)}
+  .tag.no{background:#fbe3e1;color:var(--red)}
+  .tag.warn{background:#fbf0d4;color:#7a5c05}
+  button.copy{
+    flex:none;font:inherit;font-size:11.5px;font-weight:600;
+    padding:4px 10px;border-radius:7px;cursor:pointer;
+    border:1px solid var(--green);background:#fff;color:var(--green);
+    transition:background .12s,color .12s;
+  }
+  button.copy:hover{background:var(--green);color:#fff}
+  button.copy.done{background:var(--gold);border-color:var(--gold);color:#231}
+  .banner{
+    background:var(--green);color:#fff;border-radius:14px;
+    padding:14px 18px;margin:24px 0 6px;font-size:14px;
+  }
+  .banner b{color:var(--gold)}
+  .warn{
+    background:#fff8e6;border:1px solid #e8d59a;border-radius:14px;
+    padding:14px 18px;margin-top:16px;font-size:13.5px;color:#5a4a17;
+  }
+  .warn b{color:#3d3208}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;background:var(--card);
+        border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line)}
+  th{background:#f3efe4;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
+  tr:last-child td{border-bottom:0}
+  td.mono{font-family:ui-monospace,Menlo,monospace;font-size:12.5px}
+  td.c{text-align:center}
+  .pill{
+    display:inline-block;font-size:11px;font-weight:600;
+    padding:2px 8px;border-radius:999px;
+  }
+  .pill.ok{background:#e3f2e8;color:var(--green-dark)}
+  .pill.no{background:#fbe3e1;color:var(--red)}
+  .pill.warn{background:#fbf0d4;color:#7a5c05}
+  pre{
+    background:#241f1a;color:#e8e2d5;padding:13px 15px;border-radius:11px;
+    font-size:12.5px;overflow-x:auto;line-height:1.5;
+    font-family:ui-monospace,Menlo,monospace;
+  }
+  pre .c{color:#8f8577}
+  .note{color:var(--muted);font-size:13px;margin-top:20px;line-height:1.65}
+  code{font-family:ui-monospace,Menlo,monospace;background:#f1ece0;padding:1px 6px;border-radius:5px;font-size:12.5px}
+  ul{margin:6px 0 0;padding-left:20px}
+  li{margin:4px 0}
+  .flow{
+    font-family:ui-monospace,Menlo,monospace;font-size:12.5px;
+    background:#f3efe4;border:1px solid var(--line);border-radius:10px;
+    padding:11px 14px;margin:8px 0 0;color:#3b352c;line-height:1.75;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Basil &middot; Demo Cheatsheet</h1>
+  <div class="sub">Team 5 &mdash; OFS &middot; copy-paste reference &middot; branch <code>main</code> @ <code>6edcd06</code> &middot; every value below was verified live against the running stack</div>
+</header>
+
+<div class="banner">
+  <b>Stack is already running.</b> All four services respond. Click any <b>Copy</b> button to grab a value to the clipboard.
+</div>
+
+<h2>What was completed since last time</h2>
+<p class="note" style="margin-top:-4px">Everything below is <b>merged and running</b> unless marked otherwise. Walk the demo in this order &mdash; each one builds on the last.</p>
+
+<div class="grid">
+
+  <div class="card">
+    <h3><span class="dot"></span>1. Manager Reports <span class="tag ok">PR #1</span></h3>
+    <p class="note" style="margin:0 0 10px">New <b>Reports</b> tab in the staff dashboard. Manager login only. Three sub-reports, all driven off real order data:</p>
+    <div class="row"><span class="label">Sales</span><span class="val">order count, revenue, delivery fees, average order value, revenue by day, product demand table</span></div>
+    <div class="row"><span class="label">Inventory</span><span class="val">total products, units in stock, low stock, out of stock, needs-attention list, by category</span></div>
+    <div class="row"><span class="label">Delivery</span><span class="val">delivered, delivery failed, success rate, on-time rate</span></div>
+    <div class="row"><span class="label">Date filter</span><span class="val">From / To inputs &mdash; the whole page re-computes</span></div>
+    <div class="row"><span class="label">Endpoint</span><span class="val">GET /api/reports/sales &middot; /inventory &middot; /delivery</span><button class="copy">Copy</button></div>
+    <div class="row"><span class="label">Say</span><span class="val">&ldquo;On-time rate is computed from the trip ETAs the route optimizer sets at dispatch.&rdquo;</span></div>
+  </div>
+
+  <div class="card">
+    <h3><span class="dot"></span>2. Order emails over SMTP <span class="tag ok">PR #5</span></h3>
+    <p class="note" style="margin:0 0 10px">Every status change fires an email. Built on <code>smtplib</code> with STARTTLS, plus a <b>dedup</b> table so a retried webhook never sends twice, and <b>retry</b> so a transient failure doesn't lose the mail.</p>
+    <div class="row"><span class="label">To customer</span><span class="val">order confirmed, out for delivery, delivered, delivery failed</span></div>
+    <div class="row"><span class="label">To staff</span><span class="val">delivery failed, manual review</span></div>
+    <div class="row"><span class="label">Subject</span><span class="val">"Basil order #&lt;id&gt; confirmed" / "Basil order #&lt;id&gt; is on its way" / "Basil order #&lt;id&gt; was delivered"</span><button class="copy">Copy</button></div>
+    <div class="row"><span class="label">Sign-off</span><span class="val">"- Basil, by OFS"</span><button class="copy">Copy</button></div>
+    <div class="row"><span class="label">Body</span><span class="val">Hi {name}, intro line, order #, delivery address, line items, total</span></div>
+    <div class="row"><span class="label">Say</span><span class="val">&ldquo;A mail failure never blocks the order &mdash; sending is async.&rdquo;</span></div>
+    <div class="row"><span class="label">Provider</span><span class="val">Gmail with an app password &mdash; <code>backend/.env</code>: <code>SMTP_HOST=smtp.gmail.com</code>, port 587, STARTTLS on</span></div>
+    <div class="row"><span class="label">Check it</span><span class="val"><code>cd backend &amp;&amp; python smtp_check.py you@gmail.com</code> &mdash; connects, logs in, sends one test email</span></div>
+    <div class="row"><span class="label">Caveat</span><span class="val"><span class="tag warn">be honest</span> a wrong app password shows <code>535 Username and Password not accepted</code></span></div>
+  </div>
+
+  <div class="card">
+    <h3><span class="dot"></span>3. Preparation Queue + Trips <span class="tag ok">PR #4 + T13</span></h3>
+    <p class="note" style="margin:0 0 10px">New <b>Prep Queue</b> tab in the staff dashboard, three tabs: <b>To prepare</b> / <b>Prepared</b> / <b>Manual Review</b>. A new <code>Trip</code> model groups orders for one robot run. Trip grouping logic lives in <code>app/planning.py</code>.</p>
+    <div class="row"><span class="label">Mark Prepared</span><span class="val">assigns the order to a Trip: max 10 orders, max 200 lb, and every order on the trip within a radius of the others</span></div>
+    <div class="row"><span class="label">Over 200 lb</span><span class="val">moves to Manual Review, staff get an email</span></div>
+    <div class="row"><span class="label">Undo prepare</span><span class="val">takes it back off the trip, order returns to the queue</span></div>
+    <div class="row"><span class="label">30-min timer</span><span class="val">a Trip locks 30 min after its oldest Order is placed (BR-7)</span></div>
+    <div class="row"><span class="label">Distance</span><span class="val">grouping uses straight-line (haversine) distance; the route and the per-stop ETAs come from the Mapbox Optimization API</span></div>
+    <div class="row"><span class="label">Endpoints</span><span class="val">GET /api/trips &middot; POST /api/trips/&lt;id&gt;/dispatch</span><button class="copy">Copy</button></div>
+    <div class="row"><span class="label">Toast</span><span class="val">&ldquo;Order #9 prepared and added to Trip #1 (3 of 10 orders).&rdquo;</span></div>
+    <div class="row"><span class="label">Oldest first</span><span class="val">queue sorts so the oldest order stands out</span></div>
+    <div class="row"><span class="label">Tests</span><span class="val">182-line test file for trip grouping and dispatch</span></div>
+    <div class="row"><span class="label">Say</span><span class="val">&ldquo;Trips are open, ready, or dispatched.&rdquo; The Dispatch <i>screen</i> shows the fleet, the route and the ETAs &mdash; press Dispatch and a Robot leaves the depot.</span></div>
+  </div>
+
+  <div class="card">
+    <h3><span class="dot"></span>4. Diridon zone fix <span class="tag ok">PR #3</span></h3>
+    <p class="note" style="margin:0 0 10px">The delivery-zone rectangle was too tight on the west side &mdash; Diridon Station fell outside even though it should be inside. Widened the polygon.</p>
+    <div class="row"><span class="label">Before</span><span class="val">Diridon Station &rarr; 422 outside zone</span></div>
+    <div class="row"><span class="label">After</span><span class="val">Diridon Station &rarr; valid, 37.336157 / &minus;121.890608</span><button class="copy">Copy</button></div>
+    <div class="row"><span class="label">Address</span><span class="val">Diridon Station, San Jose, CA</span><button class="copy">Copy</button></div>
+    <div class="row"><span class="label">Why it matters</span><span class="val">real downtown addresses were being rejected</span></div>
+  </div>
+
+  <div class="card">
+    <h3><span class="dot"></span>5. Basil rebrand <span class="tag ok">PR #8 &middot; merged</span></h3>
+    <p class="note" style="margin:0 0 10px">New name, new logo, new theme. Kelvin merged it &mdash; it's on <code>main</code> now.</p>
+    <div class="row"><span class="label">Name</span><span class="val">Basil &mdash; &ldquo;Basil, by OFS&rdquo;</span><button class="copy">Copy</button></div>
+    <div class="row"><span class="label">Where</span><span class="val">headers, login, page titles, email subjects, email sign-off, favicon</span></div>
+    <div class="row"><span class="label">Logo</span><span class="val">inline SVG leaf with a gold delivery dot &mdash; no image assets</span></div>
+    <div class="row"><span class="label">Theme</span><span class="val">tokens moved into shared/src/theme.css, cream page background</span></div>
+    <div class="row"><span class="label">Tiles</span><span class="val">emoji per product: 🍎 apples, 🥔 potatoes, 🥚 eggs, 🌾 oats</span></div>
+    <div class="row"><span class="label">Docs</span><span class="val">Part I and II docs unchanged</span></div>
+  </div>
+
+  <div class="card">
+    <h3><span class="dot gold"></span>6. Supabase schema + migrations <span class="tag ok">PR #7 &middot; merged</span></h3>
+    <p class="note" style="margin:0 0 10px">Our Postgres host is <b>Supabase</b> (free tier, one shared project for the whole team). Anuj's PR adds the Alembic migrations and the models the rest of the backlog is waiting on.</p>
+    <div class="row"><span class="label">Migrations</span><span class="val">0001 baseline (existing tables), 0002 foundation</span></div>
+    <div class="row"><span class="label">Tables</span><span class="val">16 total &mdash; adds robot, trip_stop, inventory_log, app_settings, notifications, delivery_settings, order_override_audits</span></div>
+    <div class="row"><span class="label">Host</span><span class="val">Supabase &mdash; db.[PROJECT-REF].supabase.co:5432/postgres</span></div>
+    <div class="row"><span class="label">Local now</span><span class="val">SQLite (demo runs on SQLite; Supabase is not connected in this demo)</span></div>
+    <div class="row"><span class="label">Commands</span><span class="val">flask --app app:create_app db upgrade</span><button class="copy">Copy</button></div>
+    <div class="row"><span class="label">Also</span><span class="val">Alembic installed, Flask-Migrate installed, psycopg2-binary installed</span></div>
+    <div class="row"><span class="label">Say</span><span class="val">&ldquo;The schema and migrations are merged; the demo runs on SQLite so it runs anywhere.&rdquo;</span></div>
+  </div>
+
+</div>
+
+<h2>Where the project stands</h2>
+<div class="grid">
+  <div class="card">
+    <h3><span class="dot"></span>Done &mdash; all 20 tasks</h3>
+    <div class="row"><span class="label">T01&ndash;T05</span><span class="val">Repo, Postgres schema + migrations, seed data, auth, catalog &amp; inventory</span></div>
+    <div class="row"><span class="label">T06&ndash;T09</span><span class="val">Storefront, browse/search/product, cart and pricing, live weight and fee preview</span></div>
+    <div class="row"><span class="label">T10&ndash;T12</span><span class="val">Stripe payments, address validation + delivery zone, order lifecycle</span></div>
+    <div class="row"><span class="label">T13&ndash;T15</span><span class="val">Trip grouping, Mapbox route optimizer, simulated robot fleet</span></div>
+    <div class="row"><span class="label">T16</span><span class="val">Order tracking and the customer live map</span></div>
+    <div class="row"><span class="label">T17</span><span class="val">Notifications over SMTP</span></div>
+    <div class="row"><span class="label">T18</span><span class="val">Staff dashboard: inventory, prep queue, Dispatch page</span></div>
+    <div class="row"><span class="label">T19</span><span class="val">Manager reports &mdash; on-time rate, delivery duration, trip utilization</span></div>
+    <div class="row"><span class="label">T20</span><span class="val">Delivery pause and Manager order override</span></div>
+    <div class="row"><span class="label">Tests</span><span class="val">351 backend tests passing, 7 skipped</span></div>
+  </div>
+  <div class="card">
+    <h3><span class="dot gold"></span>Still open &mdash; verification, not features</h3>
+    <div class="row"><span class="label">SMTP</span><span class="val">a real provider &mdash; Gmail with an app password. Until now, only a local mail sink.</span></div>
+    <div class="row"><span class="label">Stripe</span><span class="val">one real test-mode payment end to end, webhook signed and verified</span></div>
+    <div class="row"><span class="label">Map</span><span class="val">the customer map watched while a Robot is mid-trip</span></div>
+    <div class="row"><span class="label">Gaps</span><span class="val">Robots drive in straight lines; the map polls every 10s; a cancelled Order sends no email; no Apache config yet</span></div>
+    <div class="row"><span class="label">Next</span><span class="val">Part IV black box testing (12/1) &rarr; Part V maintenance (12/7) &rarr; Part VII retrospective</span></div>
+  </div>
+</div>
+
+<h2>Third-party services &mdash; what we actually integrated</h2>
+<p class="note" style="margin-top:-4px">Every external call in the codebase. Nothing else &mdash; no Google Maps, no Firebase, no auth provider, no analytics. Auth is local Flask-Login with hashed passwords.</p>
+<table>
+  <tr><th>Service</th><th>Used for</th><th>Where</th><th>State</th></tr>
+  <tr><td><b>Stripe</b></td><td>PaymentIntents, refunds, webhooks that place the Order</td><td class="mono">payments.py + PaymentElement</td><td class="c"><span class="pill ok">live</span></td></tr>
+  <tr><td><b>Mapbox</b></td><td>Geocoding API &mdash; address &rarr; lat/lng, then point-in-polygon zone check</td><td class="mono">addresses.py</td><td class="c"><span class="pill ok">live</span></td></tr>
+  <tr><td><b>Mapbox</b></td><td>Search JS &mdash; address autofill dropdown in checkout</td><td class="mono">CheckOutPage.tsx</td><td class="c"><span class="pill ok">live</span></td></tr>
+  <tr><td><b>Mapbox</b></td><td>Optimization API &mdash; road routing for the Trip, plus the per-stop ETAs</td><td class="mono">routing.py</td><td class="c"><span class="pill ok">live</span></td></tr>
+  <tr><td><b>Supabase</b></td><td>Postgres host for the whole team, with Alembic migrations and an RLS pass</td><td class="mono">DATABASE_URL</td><td class="c"><span class="pill ok">live</span></td></tr>
+  <tr><td><b>SMTP</b></td><td>Order + staff emails, dedup and retry</td><td class="mono">notifications.py</td><td class="c"><span class="pill warn">needs credentials</span></td></tr>
+</table>
+<div class="warn">
+  <b>Two honest caveats if asked:</b>
+  <ul>
+    <li><b>Three Mapbox features are live:</b> Geocoding (address &rarr; lat/lng, then the zone check), Search JS autofill in checkout, and the Optimization API for the Trip route and per-stop ETAs. The <b>customer map itself is Leaflet with OpenStreetMap tiles</b>, not Mapbox GL &mdash; our HLD named Mapbox GL but we shipped Leaflet. Don't claim Mapbox GL.</li>
+    <li><b>Robots drive in straight lines</b> between stops rather than following the road geometry, and the customer map <b>polls every 10 seconds</b> rather than streaming.</li>
+    <li><b>A cancelled Order sends no email.</b> The event map has no cancel case, so a Manager cancel is silent even though the backlog asked for a refund message.</li>
+  </ul>
+</div>
+
+<h2>1 &middot; Endpoints</h2>
+<div class="grid">
+  <div class="card">
+    <h3><span class="dot"></span>Storefront (customer)</h3>
+    <div class="row"><span class="label">URL</span><span class="val url">http://localhost:5173</span><button class="copy">Copy</button></div>
+    <div class="row"><span class="label">Status</span><span class="val">HTTP 200</span><span class="tag ok">Up</span></div>
+  </div>
+  <div class="card">
+    <h3><span class="dot"></span>Staff dashboard</h3>
+    <div class="row"><span class="label">URL</span><span class="val url">http://localhost:5174</span><button class="copy">Copy</button></div>
+    <div class="row"><span class="label">Status</span><span class="val">HTTP 200</span><span class="tag ok">Up</span></div>
+  </div>
+  <div class="card">
+    <h3><span class="dot"></span>Backend API</h3>
+    <div class="row"><span class="label">Health</span><span class="val url">http://localhost:5001/api/health</span><button class="copy">Copy</button></div>
+    <div class="row"><span class="label">Response</span><span class="val">{"status": "ok"}</span><button class="copy">Copy</button></div>
+  </div>
+  <div class="card">
+    <h3><span class="dot gold"></span>Stripe CLI listener</h3>
+    <div class="row"><span class="label">Forward</span><span class="val">localhost:5001/api/payments/webhook</span><button class="copy">Copy</button></div>
+    <div class="row"><span class="label">Events</span><span class="val">payment_intent.succeeded / .payment_failed / .canceled</span></div>
+  </div>
+</div>
+
+<h2>2 &middot; Logins</h2>
+<div class="grid">
+  <div class="card">
+    <h3><span class="dot"></span>Customer</h3>
+    <div class="row"><span class="label">Email</span><span class="val">customer@example.com</span><button class="copy">Copy</button></div>
+    <div class="row"><span class="label">Password</span><span class="val">customer123</span><button class="copy">Copy</button></div>
+    <div class="row"><span class="label">Name</span><span class="val">Casey Customer</span></div>
+  </div>
+  <div class="card">
+    <h3><span class="dot"></span>Staff &mdash; employee</h3>
+    <div class="row"><span class="label">Email</span><span class="val">employee@example.com</span><button class="copy">Copy</button></div>
+    <div class="row"><span class="label">Password</span><span class="val">employee123</span><button class="copy">Copy</button></div>
+  </div>
+  <div class="card">
+    <h3><span class="dot"></span>Staff &mdash; manager</h3>
+    <div class="row"><span class="label">Email</span><span class="val">manager@example.com</span><button class="copy">Copy</button></div>
+    <div class="row"><span class="label">Password</span><span class="val">manager123</span><button class="copy">Copy</button></div>
+  </div>
+</div>
+
+<h2>3 &middot; Test addresses &mdash; delivery zone edge cases</h2>
+<p class="note" style="margin-top:-4px">Zone is a rectangle around Downtown San Jose: lng &minus;121.9060 to &minus;121.8820, lat 37.3455 to 37.3220. Geocoded via Mapbox, then point-in-polygon.</p>
+<table>
+  <tr><th>Address to type</th><th>What happens</th><th style="width:120px">Result</th></tr>
+  <tr><td class="mono">200 E Santa Clara St, San Jose, CA</td><td>Full address match, 37.3377 / &minus;121.8858. <b>Use this for the happy path.</b></td><td class="c"><span class="pill ok">valid</span></td></tr>
+  <tr><td class="mono">100 N 4th St, San Jose, CA</td><td>Valid, near the north-east corner of the zone.</td><td class="c"><span class="pill ok">valid</span></td></tr>
+  <tr><td class="mono">Diridon Station, San Jose, CA</td><td>Valid &mdash; the west edge of the zone. This one was a bug, now fixed (PR #3).</td><td class="c"><span class="pill ok">valid</span></td></tr>
+  <tr><td class="mono">St. James Park, San Jose, CA</td><td>Valid, south-west corner.</td><td class="c"><span class="pill ok">valid</span></td></tr>
+  <tr><td class="mono">San Jose International Airport</td><td>Geocodes fine, but outside the polygon.</td><td class="c"><span class="pill no">422 zone</span></td></tr>
+  <tr><td class="mono">1 Hacker Way, Menlo Park, CA</td><td>Geocodes fine, but outside the polygon.</td><td class="c"><span class="pill no">422 zone</span></td></tr>
+  <tr><td class="mono">1000 Blossom Hill Rd, San Jose, CA</td><td>San Jose, but outside Downtown &mdash; good &ldquo;right city, wrong zone&rdquo; demo.</td><td class="c"><span class="pill no">422 zone</span></td></tr>
+  <tr><td class="mono">Stanford University, Stanford, CA</td><td>Outside the polygon.</td><td class="c"><span class="pill no">422 zone</span></td></tr>
+  <tr><td class="mono">Paris, France</td><td>Geocodes, outside the polygon.</td><td class="c"><span class="pill no">422 zone</span></td></tr>
+  <tr><td class="mono">asdfasdfqwe</td><td>Mapbox finds nothing.</td><td class="c"><span class="pill warn">404 not found</span></td></tr>
+  <tr><td class="mono">(leave it blank)</td><td>Empty string, rejected before the API call.</td><td class="c"><span class="pill warn">400 empty</span></td></tr>
+</table>
+<div class="grid" style="margin-top:14px">
+  <div class="card">
+    <h3><span class="dot red"></span>Exact error strings</h3>
+    <div class="row"><span class="label">400</span><span class="val">"Enter a delivery address."</span><button class="copy">Copy</button></div>
+    <div class="row"><span class="label">404</span><span class="val">"We couldn't find that address."</span><button class="copy">Copy</button></div>
+    <div class="row"><span class="label">422</span><span class="val">"This address is outside the Downtown San Jose Delivery Zone."</span><button class="copy">Copy</button></div>
+  </div>
+  <div class="card">
+    <h3><span class="dot gold"></span>Try it from the terminal</h3>
+    <div class="row"><span class="label">Command</span><span class="val">curl -s -X POST http://localhost:5001/api/addresses/validate -H 'Content-Type: application/json' -d '{"address":"Paris, France"}'</span><button class="copy">Copy</button></div>
+  </div>
+</div>
+
+<h2>4 &middot; Catalog &mdash; prices, weights, stock</h2>
+<table>
+  <tr><th>Product</th><th>Category</th><th>Price</th><th>Weight</th><th>Stock</th></tr>
+  <tr><td>Organic Gala Apples (3 lb bag)</td><td>Produce</td><td class="mono">$5.99</td><td class="mono">3.00 lb</td><td class="mono">39</td></tr>
+  <tr><td>Baby Spinach (5 oz)</td><td>Produce</td><td class="mono">$3.49</td><td class="mono">0.30 lb</td><td class="mono">23</td></tr>
+  <tr><td>Russet Potatoes (5 lb bag)</td><td>Produce</td><td class="mono">$4.49</td><td class="mono">5.00 lb</td><td class="mono">17</td></tr>
+  <tr><td>Free-Range Eggs (dozen)</td><td>Dairy</td><td class="mono">$6.49</td><td class="mono">1.60 lb</td><td class="mono">17</td></tr>
+  <tr><td>Whole Milk (half gallon)</td><td>Dairy</td><td class="mono">$4.99</td><td class="mono">4.30 lb</td><td class="mono" style="color:var(--red);font-weight:700">4</td></tr>
+  <tr><td>Sourdough Loaf</td><td>Bakery</td><td class="mono">$5.50</td><td class="mono">1.20 lb</td><td class="mono">12</td></tr>
+  <tr><td>Rolled Oats (2 lb)</td><td>Pantry</td><td class="mono">$4.25</td><td class="mono">2.00 lb</td><td class="mono">50</td></tr>
+  <tr><td>Olive Oil (500 ml)</td><td>Pantry</td><td class="mono">$11.99</td><td class="mono">2.20 lb</td><td class="mono">15</td></tr>
+</table>
+<p class="note"><b>Whole Milk has stock 4</b>, below its low-stock threshold of 5 &mdash; that is what makes the Inventory page show a low-stock alert and the Reports page show a low-stock count. The rest are comfortably in stock.</p>
+
+<h2>5 &middot; Weight &amp; fee rules &mdash; the demo money shot</h2>
+<p class="note" style="margin-top:-4px">BR-1: flat $10 delivery fee at <b>&ge; 20 lb</b>. BR-3: cart over <b>200 lb</b> is blocked from checkout (exactly 200 still fits). BR-4: quantity above stock is rejected.</p>
+<table>
+  <tr><th>Cart</th><th>Weight</th><th>Fee</th><th>What you see</th></tr>
+  <tr><td class="mono">3&times; Potatoes + 1&times; Apples</td><td class="mono">18.0 lb</td><td class="mono">$0.00</td><td>No delivery fee line. Below threshold.</td></tr>
+  <tr><td class="mono">4&times; Potatoes</td><td class="mono">20.0 lb</td><td class="mono" style="font-weight:700">$10.00</td><td><span class="pill ok">Best demo</span> Fee appears exactly at the threshold.</td></tr>
+  <tr><td class="mono">10&times; Potatoes + 30&times; Apples + 30&times; Oats</td><td class="mono">200.0 lb</td><td class="mono">$10.00</td><td>Exactly at the robot limit &mdash; still allowed, no warning.</td></tr>
+  <tr><td class="mono">17&times; Potatoes + 39&times; Apples</td><td class="mono">202.0 lb</td><td class="mono">$10.00</td><td><span class="pill no">Blocked</span> Red banner: &ldquo;Order exceeds 200 lb &mdash; remove items before checkout.&rdquo; Checkout button disabled.</td></tr>
+  <tr><td class="mono">5&times; Whole Milk</td><td class="mono">&mdash;</td><td class="mono">&mdash;</td><td><span class="pill no">409</span> &ldquo;Only 4 in stock.&rdquo; Add button greys out at stock.</td></tr>
+</table>
+
+<h3 style="font-size:14px;margin:18px 0 8px;color:var(--muted)">Set up a heavy cart in one line (skips the clicking)</h3>
+<pre><span class="c"># 202 lb -&gt; checkout blocked</span>
+curl -s -b cookies.txt -X PUT http://localhost:5001/api/cart/items/3 -H 'Content-Type: application/json' -d '{"quantity":17}'
+curl -s -b cookies.txt -X PUT http://localhost:5001/api/cart/items/1 -H 'Content-Type: application/json' -d '{"quantity":39}'
+
+<span class="c"># 20 lb exactly -&gt; $10 fee (the clean demo)</span>
+curl -s -b cookies.txt -X DELETE http://localhost:5001/api/cart
+curl -s -b cookies.txt -X PUT http://localhost:5001/api/cart/items/3 -H 'Content-Type: application/json' -d '{"quantity":4}'
+
+<span class="c"># get cookies.txt first</span>
+curl -s -c cookies.txt -X POST http://localhost:5001/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"customer@example.com","password":"customer123"}'</pre>
+
+<h2>6 &middot; Stripe test cards</h2>
+<div class="grid">
+  <div class="card">
+    <h3><span class="dot"></span>Payment succeeds</h3>
+    <div class="row"><span class="label">Number</span><span class="val">4242 4242 4242 4242</span><button class="copy">Copy</button></div>
+    <div class="row"><span class="label">Exp / CVC</span><span class="val">12/34 &middot; 123</span><button class="copy">Copy</button></div>
+    <div class="row"><span class="label">Use</span><span class="val">The happy-path checkout</span></div>
+  </div>
+  <div class="card">
+    <h3><span class="dot red"></span>Payment declined</h3>
+    <div class="row"><span class="label">Number</span><span class="val">4000 0000 0000 0002</span><button class="copy">Copy</button></div>
+    <div class="row"><span class="label">Exp / CVC</span><span class="val">12/34 &middot; 123</span><button class="copy">Copy</button></div>
+    <div class="row"><span class="label">Use</span><span class="val">Show the failure path</span></div>
+  </div>
+</div>
+
+<h2>7 &middot; Order lifecycle &mdash; what staff can click</h2>
+<div class="flow">
+placed &rarr; <b>Mark Prepared</b> &rarr; planned &rarr; <b>Dispatch</b> &rarr; out_for_delivery &rarr; delivered<br>
+placed &rarr; <b>Mark Prepared</b> &rarr; manual_review &nbsp;&nbsp;<span style="color:var(--muted)">(when the order is over 200 lb)</span><br>
+delivery_failed &rarr; back to placed &nbsp;&middot;&nbsp; manual_review &rarr; back to placed
+</div>
+<div class="grid">
+  <div class="card">
+    <h3><span class="dot"></span>Trip assignment rules</h3>
+    <div class="row"><span class="label">Max orders</span><span class="val">10 per trip</span><button class="copy">Copy</button></div>
+    <div class="row"><span class="label">Max weight</span><span class="val">200 lb per trip</span><button class="copy">Copy</button></div>
+    <div class="row"><span class="label">Over limit</span><span class="val">Order moves to Manual Review, staff get an email</span></div>
+  </div>
+  <div class="card">
+    <h3><span class="dot gold"></span>Emails fire on</h3>
+    <div class="row"><span class="label">Customer</span><span class="val">placed, out for delivery, delivered, delivery failed</span></div>
+    <div class="row"><span class="label">Staff</span><span class="val">manual review</span></div>
+    <div class="row"><span class="label">Subject</span><span class="val">"Basil order #&lt;id&gt; ..."</span><button class="copy">Copy</button></div>
+    <div class="row"><span class="label">Sign-off</span><span class="val">"Basil, by OFS"</span><button class="copy">Copy</button></div>
+  </div>
+</div>
+
+<h2>8 &middot; Seeded demo data (after a reset)</h2>
+<table>
+  <tr><th>#</th><th>Status</th><th>Weight</th><th>Total</th><th>Age</th></tr>
+  <tr><td class="mono">1</td><td>delivered</td><td class="mono">9.0 lb</td><td class="mono">$17.97</td><td class="mono">1 day ago</td></tr>
+  <tr><td class="mono">2</td><td>delivered</td><td class="mono">0.6 lb</td><td class="mono">$6.98</td><td class="mono">1 day ago</td></tr>
+  <tr><td class="mono">3</td><td>delivered</td><td class="mono">3.2 lb</td><td class="mono">$12.98</td><td class="mono">2 days ago</td></tr>
+  <tr><td class="mono">4</td><td>delivery_failed</td><td class="mono">20.0 lb</td><td class="mono">$27.96</td><td class="mono">3 days ago</td></tr>
+  <tr><td class="mono">5</td><td>placed</td><td class="mono">1.2 lb</td><td class="mono">$5.50</td><td class="mono">3 days ago</td></tr>
+  <tr><td class="mono">6</td><td>cancelled</td><td class="mono">10.0 lb</td><td class="mono">$21.25</td><td class="mono">3 days ago</td></tr>
+  <tr><td class="mono">7</td><td>delivered</td><td class="mono">4.4 lb</td><td class="mono">$23.98</td><td class="mono">6 days ago</td></tr>
+  <tr><td class="mono">8</td><td>delivered</td><td class="mono">4.3 lb</td><td class="mono">$4.99</td><td class="mono">5 days ago</td></tr>
+</table>
+<p class="note">Reports need this history &mdash; the date filter defaults to a window that shows these. Order 4 is the &ldquo;delivery failed&rdquo; one, so the success-rate stat is not 100%. Order 5 is the <code>placed</code> one waiting in the Prep Queue.</p>
+
+<h2>9 &middot; Commands</h2>
+<div class="card">
+  <div class="row"><span class="label">Reset + start</span><span class="val">backend/demo_local/run_demo.sh --reset</span><button class="copy">Copy</button></div>
+  <div class="row"><span class="label">Start only</span><span class="val">backend/demo_local/run_demo.sh</span><button class="copy">Copy</button></div>
+  <div class="row"><span class="label">Stop</span><span class="val">backend/demo_local/stop_demo.sh</span><button class="copy">Copy</button></div>
+  <div class="row"><span class="label">Story page</span><span class="val">team5-ofs/docs/basil-update.html</span><button class="copy">Copy</button></div>
+  <div class="row"><span class="label">Backend log</span><span class="val">backend/demo_local/logs/flask.log</span><button class="copy">Copy</button></div>
+  <div class="row"><span class="label">Staff log</span><span class="val">backend/demo_local/logs/staff.log</span><button class="copy">Copy</button></div>
+  <div class="row"><span class="label">Stripe log</span><span class="val">backend/demo_local/logs/stripe.log</span><button class="copy">Copy</button></div>
+</div>
+
+<div class="warn">
+  <b>Before you present</b>
+  <ul>
+    <li><b>Reset the DB.</b> The demo database goes stale relative to the migrations &mdash; on 11/16 it was missing 8 tables and every checkout page 500'd. Run <code>cd backend &amp;&amp; rm -f demo.db &amp;&amp; python seed_demo.py --with-orders</code>, then restart the backend.</li>
+    <li><b>The Stripe <i>Card</i> accordion is collapsed by default.</b> Click <b>Card</b> to expand it before typing the card number, or your keystrokes go into a hidden field and nothing happens.</li>
+    <li><b>The Pay button did not respond to automated clicks</b> but works with a real mouse. If nothing happens, click once more &mdash; don't spam it, Stripe will reject the duplicate.</li>
+    <li><b>Open the customer's Track tab before you dispatch.</b> The map refreshes every 10 seconds, so opening it after the Robot has arrived shows nothing to watch.</li>
+    <li><b>Run the backend on port 5001, not 5000.</b> macOS AirPlay Receiver owns 5000 and answers everything with 403, which looks exactly like a dead backend.</li>
+    <li><b>Start the backend with <code>FLASK_RELOAD=0</code>.</b> The Flask reloader can lose the port on restart and take the whole server down mid-demo.</li>
+    <li><b>The Stripe <code>whsec</code> changes every time <code>stripe listen</code> starts.</b> Copy the one it prints into <code>backend/.env</code> and restart the backend, or every payment is rejected as an invalid signature.</li>
+    <li><b>The Stripe badge</b> in the checkout screenshot (small dark badge, right side) is Stripe's test-mode widget. Harmless, leave it.</li>
+    <li><b>Whole Milk stock is 4</b> right now. If you reset, it goes back to 4 &mdash; that is intentional, it drives the low-stock alert.</li>
+  </ul>
+</div>
+
+<p class="note">
+  <b>Say out loud if asked:</b> emails are built and deduped/retried and now go out through a real Gmail account with an app password. The demo DB is local SQLite; the Postgres schema and migrations are merged on main (PR #7). The Basil rebrand is merged (PR #8). The customer map is Leaflet, not Mapbox GL. Robots drive in straight lines and the map polls every 10 seconds.
+</p>
+
+</div>
+
+<script>
+document.querySelectorAll('td.mono').forEach(function(td){
+  td.style.cursor = 'copy';
+  td.title = 'Click to copy';
+  td.addEventListener('click', function(){
+    var val = td.textContent.trim();
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(val);
+    var old = td.style.background;
+    td.style.background = '#fbf0d4';
+    setTimeout(function(){ td.style.background = old; }, 700);
+  });
+});
+
+document.querySelectorAll('button.copy').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    var val = btn.closest('.row').querySelector('.val').textContent.trim();
+    var done = function(){
+      var old = btn.textContent;
+      btn.textContent = 'Copied';
+      btn.classList.add('done');
+      setTimeout(function(){ btn.textContent = old; btn.classList.remove('done'); }, 1100);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(val).then(done, done);
+    } else {
+      var ta = document.createElement('textarea');
+      ta.value = val; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); } catch(e) {}
+      document.body.removeChild(ta); done();
+    }
+  });
+});
+</script>
+</body>
+</html>

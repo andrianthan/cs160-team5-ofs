@@ -31,9 +31,9 @@ def test_tracking_logged_in_customer(client):
     # Step 3: Request tracking information for order 1.
     response = client.get("/api/tracking/1")
 
-    # Step 4: Tracking is not implemented yet.
-    assert response.status_code == 501
-    assert response.get_json()["error"] == "tracking_not_available"
+    # Step 4: No such order.
+    assert response.status_code == 404
+    assert response.get_json()["error"] == "order_not_found"
 
 
 from app.extensions import db
@@ -65,8 +65,8 @@ def test_tracking_logged_in_employee(app, client):
     # Request tracking information.
     response = client.get("/api/tracking/1")
 
-    assert response.status_code == 501
-    assert response.get_json()["error"] == "tracking_not_available"
+    assert response.status_code == 404
+    assert response.get_json()["error"] == "order_not_found"
 
 
 def test_tracking_logged_in_manager(app, client):
@@ -94,5 +94,5 @@ def test_tracking_logged_in_manager(app, client):
     # Request tracking information.
     response = client.get("/api/tracking/1")
 
-    assert response.status_code == 501
-    assert response.get_json()["error"] == "tracking_not_available"
+    assert response.status_code == 404
+    assert response.get_json()["error"] == "order_not_found"

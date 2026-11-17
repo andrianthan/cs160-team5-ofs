@@ -35,9 +35,23 @@ class Config:
     TRIP_DISPATCH_TIMEOUT_MIN = 30
     TRIP_GROUP_RADIUS_KM = 0.5  # every Order on a Trip is within this of the others
 
+    # T14/T15: the store every Robot leaves from and returns to (downtown San Jose by default).
+    STORE_LAT = float(os.environ.get("STORE_LAT", 37.3352))
+    STORE_LNG = float(os.environ.get("STORE_LNG", -121.8811))
+    ROBOT_SPEED_KMH = 8.0  # used for ETAs when Mapbox isn't available
+    ROBOT_SIM_ENABLED = True  # off: Robots are assigned but never drive (unit tests of Dispatch)
+    ROBOT_SIM_ASYNC = True  # run Trips on a background thread; tests run them inline
+    ROBOT_SIM_TICK_S = 1.0  # seconds between simulated position updates (0 = no waiting)
+    ROBOT_SIM_STEPS = 10  # position updates per leg of the route
+    ROBOT_SIM_DWELL_S = 3.0  # time spent at each stop handing over the order
+
 
 class TestConfig(Config):
     TESTING = True
     NOTIFICATIONS_ASYNC = False
     NOTIFY_RETRY_DELAY_S = 0
+    ROBOT_SIM_ASYNC = False
+    ROBOT_SIM_TICK_S = 0
+    ROBOT_SIM_DWELL_S = 0
+    ROBOT_SIM_STEPS = 2
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"

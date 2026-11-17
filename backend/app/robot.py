@@ -113,6 +113,13 @@ class Robot():
         # have robot under OUT_FOR_DELIVERY state until estimated completed time
         # can do this incremented timer OR actually wait or sleep for duration, then update in real time
         return
+
+    # can be separate from delivery route
+    def return_home(self):
+        #call mapbox route optimization
+        #for duration, RETURNING
+        #or try to simulate live travel and depot_reached upon arrival home
+        return
     
     # TODO: simulate robot movement on given route
     # if using same route in my old T14 mapbox api call, should be round trip

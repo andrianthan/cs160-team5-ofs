@@ -36,7 +36,10 @@ class Config:
     SMTP_PORT = int(os.environ.get("SMTP_PORT", 587))
     SMTP_USERNAME = os.environ.get("SMTP_USERNAME")
     SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD")
-    SMTP_FROM = os.environ.get("SMTP_FROM")
+    # Falls back to the sending address, so setting the username is enough.
+    SMTP_FROM = os.environ.get("SMTP_FROM") or (
+        f"Basil <{SMTP_USERNAME}>" if SMTP_USERNAME else None
+    )
     SMTP_STARTTLS = os.environ.get("SMTP_STARTTLS", "1") != "0"
     # Gmail's first TLS handshake can take longer than 10s, which failed the send before the
     # password was even checked.

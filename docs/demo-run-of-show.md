@@ -105,24 +105,36 @@ takes five minutes:
 
 1. Turn on 2-Step Verification on the sending Google account.
 2. `myaccount.google.com/apppasswords` → create a password (16 characters, no spaces).
-3. `backend/.env`:
+3. Put the credentials in and check them, in one step:
 
-   ```
-   SMTP_HOST=smtp.gmail.com
-   SMTP_PORT=587
-   SMTP_USERNAME=youraddress@gmail.com
-   SMTP_PASSWORD=abcdefghijklmnop
-   SMTP_FROM=Basil <youraddress@gmail.com>
-   SMTP_STARTTLS=1
+   ```bash
+   cd backend
+   .venv/bin/python set_smtp_credentials.py
    ```
 
-4. Restart the backend.
+   It asks for the address, reads the app password without echoing it, writes
+   `SMTP_USERNAME` / `SMTP_PASSWORD` / `SMTP_FROM` into `backend/.env` (keeping a `.env.bak`),
+   and then immediately connects, logs in and sends a test email to that address.
 
-Verify **before** the demo, not during it:
+4. Restart the backend, and check the email arrived.
+
+If you would rather paste the values yourself, `backend/.env` needs:
+
+```
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=youraddress@gmail.com
+SMTP_PASSWORD=abcdefghijklmnop
+SMTP_FROM=Basil <youraddress@gmail.com>
+SMTP_STARTTLS=1
+```
+
+Check them without sending anything, or send a test mail to anyone:
 
 ```bash
 cd backend
-.venv/bin/python smtp_check.py you@gmail.com          # connect + login, sends nothing
+.venv/bin/python smtp_check.py                          # connect + log in, sends nothing
+.venv/bin/python smtp_check.py you@gmail.com            # sends one test email
 .venv/bin/python smtp_check.py you@gmail.com --subject "Basil" --body "hello"
 ```
 

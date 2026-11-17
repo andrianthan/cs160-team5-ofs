@@ -41,7 +41,7 @@ function clock(iso: string | null): string {
 }
 
 // ---- schematic map: no tiles, just the stops, routes and Robots scaled to fit ----
-const W = 640, H = 360, PAD = 28;
+const W = 640, H = 360, PAD = 40;
 
 function RouteMap({ trips, robots }: { trips: DispatchTrip[]; robots: Robot[] }) {
     const points = useMemo(() => {
@@ -55,6 +55,18 @@ function RouteMap({ trips, robots }: { trips: DispatchTrip[]; robots: Robot[] })
     }, [trips, robots]);
 
     if (points.length === 0) return null;
+
+    // Robots at the same spot (all parked at the store) share one marker and one label.
+    const groups = new Map<string, { key: string; lat: number; lng: number; names: string[]; offline: boolean }>();
+    for (const r of robots) {
+        if (r.lat === null || r.lng === null) continue;
+        const key = `${r.lat.toFixed(4)},${r.lng.toFixed(4)}`;
+        const g = groups.get(key) ?? { key, lat: r.lat, lng: r.lng, names: [], offline: true };
+        g.names.push(r.code);
+        g.offline = g.offline && r.status === "offline";
+        groups.set(key, g);
+    }
+    const parked = [...groups.values()].map((g) => ({ ...g, label: g.names.length > 2 ? `${g.names.length} robots` : g.names.join(", ") }));
 
     const lats = points.map((p) => p[1]);
     const lngs = points.map((p) => p[0]);
@@ -95,18 +107,14 @@ function RouteMap({ trips, robots }: { trips: DispatchTrip[]; robots: Robot[] })
                           ))}
                 </g>
             ))}
-            {robots.map(
-                (r) =>
-                    r.lat !== null &&
-                    r.lng !== null && (
-                        <g key={r.id}>
-                            <rect x={x(r.lng) - 7} y={y(r.lat) - 7} width="14" height="14" rx="3" fill={r.status === "offline" ? "#B91C1C" : "var(--color-brand-900)"} />
-                            <text x={x(r.lng) + 11} y={y(r.lat) - 9} fontSize="11" fill="var(--color-brand-900)">
-                                {r.code}
-                            </text>
-                        </g>
-                    ),
-            )}
+            {parked.map((group) => (
+                <g key={group.key}>
+                    <rect x={x(group.lng) - 7} y={y(group.lat) - 7} width="14" height="14" rx="3" fill={group.offline ? "#B91C1C" : "var(--color-brand-900)"} />
+                    <text x={x(group.lng) - 11} y={y(group.lat) - 11} textAnchor={x(group.lng) > W / 2 ? "end" : "start"} fontSize="11" fill="var(--color-brand-900)">
+                        {group.label}
+                    </text>
+                </g>
+            ))}
         </svg>
     );
 }
@@ -163,7 +171,7 @@ export default function DispatchPage() {
         const result = await setDeliveryPause(!paused);
         if (result.ok) {
             setPaused(result.data.paused);
-            setNotice(result.data.paused ? "New deliveries paused. Customers can't check out." : "Deliveries resumed.");
+            if (!result.data.paused) setNotice("Deliveries resumed."); // the paused banner already says when it's on
         } else setError(result.data.message);
     };
 

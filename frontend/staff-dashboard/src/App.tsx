@@ -11,9 +11,9 @@ import {
   BrandMark,
   LoginPage,
   NavPill,
-  PageStub,
 } from "@ofs/shared/components";
 
+import DispatchPage from "./pages/DispatchPage";
 import InventoryPage from "./pages/InventoryPage";
 import OrderQueuePage from "./pages/OrderQueuePage";
 import ReportsPage from "./pages/ReportsPage";
@@ -69,11 +69,7 @@ export default function App() {
             path="/dispatch"
             element={
               <RequireAuth roles={STAFF_ROLES}>
-                <PageStub
-                  title="Dispatch"
-                  task="T13 / T14 / T15"
-                  owner="Ethan"
-                />
+                <DispatchPage />
               </RequireAuth>
             }
           />

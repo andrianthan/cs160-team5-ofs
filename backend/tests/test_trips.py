@@ -45,6 +45,15 @@ def staff(app, client):
     return customer
 
 
+@pytest.fixture
+def fleet(app):
+    """Two parked Robots for Dispatch, which then sends them out without driving (see test_robot.py)."""
+    from app.robot import Robot
+    app.config["ROBOT_SIM_ENABLED"] = False
+    Robot.create("R-1"), Robot.create("R-2")
+    db.session.commit()
+
+
 def prepare(client, order):
     return client.post(f"/api/orders/{order.id}/prepare").get_json()["trip"]
 
@@ -134,7 +143,7 @@ def test_trips_are_staff_only(client, app):
     assert client.get("/api/trips").status_code == 403
 
 
-def test_list_shows_ready_then_open_then_dispatched(client, staff):
+def test_list_shows_ready_then_open_then_dispatched(client, staff, fleet):
     dispatched = prepare(client, make_order(staff, SAP_CENTER))["id"]
     client.post(f"/api/trips/{dispatched}/dispatch")
     open_trip = prepare(client, make_order(staff, CITY_HALL))["id"]
@@ -152,7 +161,7 @@ def test_list_includes_order_details_with_utc_times(client, staff):
 
 # ============ POST /api/trips/<id>/dispatch ============
 
-def test_dispatch_sends_the_orders_out(client, staff):
+def test_dispatch_sends_the_orders_out(client, staff, fleet):
     a, b = make_order(staff), make_order(staff)
     trip_id = prepare(client, a)["id"]
     prepare(client, b)
@@ -161,7 +170,7 @@ def test_dispatch_sends_the_orders_out(client, staff):
     assert {db.session.get(Order, o.id).status for o in (a, b)} == {"out_for_delivery"}
 
 
-def test_dispatched_trip_cannot_be_dispatched_again_or_take_orders(client, staff):
+def test_dispatched_trip_cannot_be_dispatched_again_or_take_orders(client, staff, fleet):
     trip_id = prepare(client, make_order(staff))["id"]
     client.post(f"/api/trips/{trip_id}/dispatch")
     assert client.post(f"/api/trips/{trip_id}/dispatch").status_code == 409
@@ -172,7 +181,7 @@ def test_dispatch_unknown_trip(client, staff):
     assert client.post("/api/trips/999/dispatch").status_code == 404
 
 
-def test_order_can_leave_a_ready_trip_but_not_a_dispatched_one(client, staff):
+def test_order_can_leave_a_ready_trip_but_not_a_dispatched_one(client, staff, fleet):
     orders = [make_order(staff) for _ in range(10)]
     trip_id = [prepare(client, o) for o in orders][-1]["id"]  # full -> ready
     assert client.patch(f"/api/orders/{orders[0].id}/status", json={"status": "placed"}).status_code == 200

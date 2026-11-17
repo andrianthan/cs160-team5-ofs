@@ -17,7 +17,7 @@ load_dotenv(Path(__file__).resolve().parent / ".env")
 
 from app import create_app  # noqa: E402
 from app.extensions import db  # noqa: E402
-from app.models import Cart, CartLine, Product, User  # noqa: E402
+from app.models import Cart, CartLine, Product, Robot, User  # noqa: E402
 
 DEMO_USERS = [
     ("customer@example.com", "Casey Customer", "customer", "customer123"),
@@ -81,6 +81,13 @@ with app.app_context():
                     stock_qty=stock_qty,
                 )
             )
+
+    for n in range(1, 4):  # the demo fleet, parked at the store
+        code = f"ROBOT-{n:02d}"
+        if Robot.query.filter_by(robot_code=code).first() is None:
+            db.session.add(Robot(robot_code=code, status="available",
+                                 current_latitude=app.config["STORE_LAT"],
+                                 current_longitude=app.config["STORE_LNG"]))
 
     db.session.commit()
 

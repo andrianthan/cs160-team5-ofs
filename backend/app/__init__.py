@@ -40,11 +40,11 @@ def create_app(config_class=Config):
         # API returns JSON, never a redirect to a login page.
         return jsonify(error="unauthorized"), 401
 
-    from .blueprints import auth, products, cart, addresses, payments, orders, trips, tracking, reports, settings
+    from .blueprints import auth, products, cart, addresses, payments, orders, trips, tracking, reports, settings, robots
 
     for bp in (
         auth.bp, products.bp, cart.bp, addresses.bp, payments.bp,
-        orders.bp, trips.bp, tracking.bp, reports.bp, settings.bp,
+        orders.bp, trips.bp, tracking.bp, reports.bp, settings.bp, robots.bp,
     ):
         app.register_blueprint(bp)
 

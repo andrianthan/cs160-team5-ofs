@@ -47,6 +47,7 @@ ROUTES = {
     ("GET", "/api/settings/delivery-pause"): PUBLIC,
     ("PUT", "/api/settings/delivery-pause"): MANAGER,
     ("GET", "/api/tracking/<int:order_id>"): SIGNED_IN,  # customers (own orders) and staff
+    ("GET", "/api/robots"): STAFF,
     ("GET", "/api/trips"): STAFF,
     ("POST", "/api/trips/<int:trip_id>/dispatch"): STAFF,
 }

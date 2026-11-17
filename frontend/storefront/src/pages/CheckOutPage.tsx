@@ -100,7 +100,7 @@ export default function CheckOutPage() {
                 options={{ mode: "payment", amount: Math.round(cart.total * 100), currency: "usd", appearance }}
             >
                 <div className="grid md:grid-cols-3 gap-6">
-                    <CheckoutForm overweight={cart.overweight} onPaid={setPaidId} />
+                    <CheckoutForm overweight={cart.overweight} paused={paused} onPaid={setPaidId} />
 
                     <aside className="bg-white border border-brand-100 rounded-3xl p-5 h-fit space-y-3 shadow-sm shadow-brand-900/5">
                         <h2 className="font-semibold">Order Summary</h2>
@@ -157,7 +157,7 @@ export default function CheckOutPage() {
 }
 
 // Lives inside <Elements> because useStripe() and useElements() only work there.
-function CheckoutForm({ overweight, onPaid }: { overweight: boolean; onPaid: (paymentId: number) => void }) {
+function CheckoutForm({ overweight, paused, onPaid }: { overweight: boolean; paused: boolean; onPaid: (paymentId: number) => void }) {
     const stripe = useStripe();
     const elements = useElements();
 
@@ -194,7 +194,7 @@ function CheckoutForm({ overweight, onPaid }: { overweight: boolean; onPaid: (pa
         }
     }
 
-    const canPay = Boolean(stripe && elements && paymentReady && checked && !overweight && !submitting);
+    const canPay = Boolean(stripe && elements && paymentReady && checked && !overweight && !paused && !submitting);
 
     const pay = async (e: FormEvent) => {
         e.preventDefault();

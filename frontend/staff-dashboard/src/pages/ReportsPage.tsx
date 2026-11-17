@@ -128,7 +128,13 @@ export default function ReportsPage() {
                         <Stat label="Success rate" value={pct(delivery.deliverySuccessRate)} />
                         <Stat label="On-time rate" value={pct(delivery.onTimeRate)} />
                     </div>
-                    <p className="text-xs text-gray-500 mt-2">On-time rate needs trip ETAs from delivery planning (T13/T15).</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
+                        <Stat label="Avg delivery time" value={delivery.avgDeliveryMinutes === null ? "—" : `${delivery.avgDeliveryMinutes.toFixed(1)} min`} />
+                        <Stat label="Trips dispatched" value={delivery.tripUtilization?.trips ?? "—"} />
+                        <Stat label="Avg orders / trip" value={delivery.tripUtilization ? delivery.tripUtilization.avgOrdersPerTrip.toFixed(1) : "—"} />
+                        <Stat label="Robot load (orders · weight)" value={delivery.tripUtilization ? `${pct(delivery.tripUtilization.avgOrderFill)} · ${pct(delivery.tripUtilization.avgWeightFill)}` : "—"} />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">On-time = arrived by the ETA set at dispatch. Robot load = average share of the 10-order and 200 lb limits.</p>
                 </section>
             )}
         </main>

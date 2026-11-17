@@ -53,8 +53,8 @@ def test_stock_matches_the_inventory_log(seeded):
         assert all(a.after_qty == b.before_qty for a, b in zip(rows, rows[1:]))
 
 
-def test_trips_respect_capacity_and_two_robots_exist(seeded):
-    assert Robot.query.count() == 2
+def test_trips_respect_capacity_and_the_fleet_exists(seeded):
+    assert Robot.query.count() == 3
     for trip in Trip.query.all():
         assert len(trip.orders) <= 10 and trip.weight_lb <= 200
 

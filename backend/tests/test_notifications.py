@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 import pytest
+import smtplib
 
 from app import notifications
 from app.extensions import db
@@ -13,10 +14,12 @@ PASSWORD = "johnathanpassword123"
 
 class FakeSMTP:
     """Stands in for smtplib.SMTP. Class-level state so tests can inspect every connection."""
-    sent, fail_times, logins, tls = [], 0, [], 0
+    sent, fail_times, logins, tls, ehlo_calls, auths = [], 0, [], 0, 0, []
 
     def __init__(self, host, port, timeout=None):
         self.host, self.port = host, port
+        self.esmtp_features = {"auth": "PLAIN"}
+        self.ehlo_calls = 0
 
     def __enter__(self):
         return self
@@ -24,11 +27,27 @@ class FakeSMTP:
     def __exit__(self, *a):
         return False
 
+    def ehlo_or_helo_if_needed(self):
+        # RFC 3207: after STARTTLS the client must re-read the server's features
+        FakeSMTP.ehlo_calls += 1
+        self.esmtp_features = {"auth": "PLAIN"}
+
     def starttls(self):
         FakeSMTP.tls += 1
+        # RFC 3207: the features learned before STARTTLS are discarded and must be re-read
+        self.esmtp_features = {}
 
     def login(self, user, pw):
         FakeSMTP.logins.append((user, pw))
+
+    def auth_plain(self, challenge=None):
+        return "\0%s\0%s" % (self.user, self.password)
+
+    def auth(self, mechanism, authobject, *, initial_response_ok=True):
+        # mirrors smtplib: the callable is handed back to us, and we call it for the response
+        FakeSMTP.auths.append(mechanism)
+        FakeSMTP.logins.append((self.user, self.password))
+        return 235, b"authenticated"
 
     def send_message(self, msg):
         if FakeSMTP.fail_times > 0:
@@ -40,6 +59,8 @@ class FakeSMTP:
 @pytest.fixture(autouse=True)
 def smtp(app, monkeypatch):
     FakeSMTP.sent, FakeSMTP.fail_times, FakeSMTP.logins, FakeSMTP.tls = [], 0, [], 0
+    FakeSMTP.ehlo_calls = 0
+    FakeSMTP.auths = []
     monkeypatch.setattr(notifications.smtplib, "SMTP", FakeSMTP)
     app.config.update(SMTP_HOST="smtp.test", SMTP_PORT=587, SMTP_USERNAME="apikey", SMTP_PASSWORD="pw",
                       SMTP_FROM="no-reply@ofs.test", NOTIFICATIONS_ASYNC=False,
@@ -203,6 +224,43 @@ def test_smtp_auth_and_tls_used(app):
     o = world()
     notifications.notify_order_event(o.id, notifications.ORDER_PLACED)
     assert FakeSMTP.tls == 1 and FakeSMTP.logins == [("apikey", "pw")]
+    # RFC 3207: the server's features are discarded by STARTTLS, so they must be re-read
+    assert FakeSMTP.ehlo_calls == 1
+    # and the whole point of the helper: one AUTH exchange, with PLAIN
+    assert FakeSMTP.auths == ["PLAIN"]
+
+
+def test_login_prefers_plain_so_the_servers_own_error_survives():
+    """smtplib's login() tries PLAIN and then falls through to LOGIN.
+
+    Gmail closes the connection right after it rejects an AUTH, so that fall-through turns
+    a clear "535 username and password not accepted" into an opaque "Connection
+    unexpectedly closed" -- which is what gets logged when the credentials are wrong.
+    """
+    calls = []
+
+    class RejectingSMTP:
+        esmtp_features = {"auth": "LOGIN PLAIN"}
+        user = password = None
+
+        def ehlo_or_helo_if_needed(self):
+            calls.append("ehlo")
+
+        def auth_plain(self, challenge=None):
+            return "\0%s\0%s" % (self.user, self.password)
+
+        def auth(self, mechanism, authobject, *, initial_response_ok=True):
+            calls.append(mechanism)
+            raise smtplib.SMTPAuthenticationError(535, b"5.7.8 Username and Password not accepted")
+
+        def login(self, user, pw):
+            calls.append("login")
+
+    server = RejectingSMTP()
+    with pytest.raises(smtplib.SMTPAuthenticationError) as err:
+        notifications._login(server, "apikey", "pw")
+    assert err.value.smtp_code == 535
+    assert calls == ["ehlo", "PLAIN"], "must re-read the server features, and must not fall through to LOGIN"
 
 
 def test_missing_order_is_ignored(app):

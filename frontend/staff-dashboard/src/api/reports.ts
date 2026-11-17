@@ -29,6 +29,8 @@ export type DeliveryReport = {
     failed: number;
     deliverySuccessRate: number | null;
     onTimeRate: number | null;
+    avgDeliveryMinutes: number | null;
+    tripUtilization: { trips: number; avgOrdersPerTrip: number; avgOrderFill: number; avgWeightFill: number } | null;
 };
 
 const query = (from: string, to: string) => {

@@ -40,6 +40,12 @@ export default function CheckOutPage() {
     const { cart, loading, error } = useCart();
     // set once the card is confirmed; ?paymentId= is where Stripe sends redirect-based payment methods back
     const [searchParams] = useSearchParams();
+    const [paused, setPaused] = useState(false);
+    useEffect(() => {
+        void apiRequest<{ paused: boolean }>("/api/settings/delivery-pause").then((res) => {
+            if (res.ok) setPaused(res.data.paused);
+        });
+    }, []);
     const [paidId, setPaidId] = useState<number | null>(() => Number(searchParams.get("paymentId")) || null);
 
     // checked before the empty-cart state: a placed order empties the cart
@@ -81,6 +87,12 @@ export default function CheckOutPage() {
         <div className="max-w-5xl mx-auto px-4 py-6">
             <h1 className="text-2xl font-display font-bold mb-5">Checkout</h1>
 
+            {paused && (
+                <div role="alert" className="mb-5 text-sm bg-gold-100 text-gold-800 border border-gold-200 rounded-xl px-3 py-2.5">
+                    Deliveries are temporarily paused, so we can't take new orders right now. Your cart is saved. Please try again later.
+                </div>
+            )}
+
             {/* Deferred intent: the card form shows now; the PaymentIntent is only created when Pay is clicked (step 4).
                 amount is display-only here; the backend always charges its own cart total. */}
             <Elements
@@ -88,7 +100,7 @@ export default function CheckOutPage() {
                 options={{ mode: "payment", amount: Math.round(cart.total * 100), currency: "usd", appearance }}
             >
                 <div className="grid md:grid-cols-3 gap-6">
-                    <CheckoutForm overweight={cart.overweight} onPaid={setPaidId} />
+                    <CheckoutForm overweight={cart.overweight} paused={paused} onPaid={setPaidId} />
 
                     <aside className="bg-white border border-brand-100 rounded-3xl p-5 h-fit space-y-3 shadow-sm shadow-brand-900/5">
                         <h2 className="font-semibold">Order Summary</h2>
@@ -145,7 +157,7 @@ export default function CheckOutPage() {
 }
 
 // Lives inside <Elements> because useStripe() and useElements() only work there.
-function CheckoutForm({ overweight, onPaid }: { overweight: boolean; onPaid: (paymentId: number) => void }) {
+function CheckoutForm({ overweight, paused, onPaid }: { overweight: boolean; paused: boolean; onPaid: (paymentId: number) => void }) {
     const stripe = useStripe();
     const elements = useElements();
 
@@ -182,7 +194,7 @@ function CheckoutForm({ overweight, onPaid }: { overweight: boolean; onPaid: (pa
         }
     }
 
-    const canPay = Boolean(stripe && elements && paymentReady && checked && !overweight && !submitting);
+    const canPay = Boolean(stripe && elements && paymentReady && checked && !overweight && !paused && !submitting);
 
     const pay = async (e: FormEvent) => {
         e.preventDefault();

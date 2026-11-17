@@ -1,8 +1,9 @@
-"""Demo data for seed_demo.py: accounts, a full catalog, two robots and two weeks of order history.
+"""Demo data for seed_demo.py: accounts, a full catalog and two weeks of order history.
 
 Everything here is made up for demos and testing. Two parts:
   - the lists below (users, addresses, products);
-  - build_history(), which writes past orders, payments, trips, stops, robots and the inventory log,
+  - build_history(), which writes past orders, payments, trips, stops and the inventory log (the
+    three Robots are created by seed_demo.py),
     spread over the last 14 days (relative to "now") so the manager reports have numbers to show.
 
 build_history() only runs on a database with no orders at all, so it can never add to real data.
@@ -57,7 +58,7 @@ CUSTOMER_ADDRESS_INDEX = {
     "priya@example.com": 5, "leo@example.com": 6, "mia@example.com": 7,
 }
 
-STORE = (37.33400, -121.89120)  # where the Robots start and return to
+STORE = (Config.STORE_LAT, Config.STORE_LNG)  # where the Robots start and return to (same as the simulator)
 
 WATER = "Spring Water (case of 24)"
 
@@ -141,7 +142,24 @@ class _History:
 
     # ---- orders ----------------------------------------------------------------------------
 
+    @staticmethod
+    def _float_exact(lines):
+        """SQLite stores money as floating point, so its total = subtotal + fee check can fail on
+        baskets like 54.77 + 10.00. PostgreSQL is exact. Only use baskets that pass on both."""
+        subtotal = sum((p.price * qty for p, qty in lines), Decimal("0"))
+        weight = sum((p.weight_lb * qty for p, qty in lines), Decimal("0"))
+        fee = Decimal(Config.DELIVERY_FEE_AMOUNT) if weight >= Config.DELIVERY_FEE_THRESHOLD_LB else Decimal("0")
+        return float(_money(subtotal)) + float(_money(fee)) == float(_money(subtotal + fee))
+
     def _basket(self, heavy=False):
+        """A float-safe basket (see above), drawn at random."""
+        for _ in range(100):
+            lines = self._draw_basket(heavy)
+            if self._float_exact(lines):
+                return lines
+        raise RuntimeError("could not draw a basket with exact totals")
+
+    def _draw_basket(self, heavy=False):
         """A list of (product, quantity). `heavy` adds a water case so the order reaches 20 lb."""
         sellable = [p for p in self.products.values()
                     if p.active and p.name != WATER and DESIRED[p.name] >= 10]
@@ -229,7 +247,9 @@ class _History:
             clock += timedelta(minutes=max(4, round(distance_km(here[0], here[1], order.delivery_lat,
                                                                   order.delivery_lng) * 7)))
             estimated = clock
-            arrived = estimated + timedelta(minutes=self.rng.randint(-2, 4))
+            # about 85% of deliveries arrive on or before the estimate (that is what the on-time report counts)
+            offset = self.rng.randint(-3, 0) if self.rng.random() < 0.85 else self.rng.randint(1, 5)
+            arrived = estimated + timedelta(minutes=offset)
             failed = order is fail_order
             done = arrived + timedelta(minutes=2)
             trip.stops.append(TripStop(
@@ -266,12 +286,15 @@ def build_history(now=None):
                 formatted_address=f"{line1}, San Jose, CA {postal}", latitude=lat, longitude=lng,
                 in_delivery_zone=True, is_default=True))
 
-    # Two simulated Robots (T03).
-    robot1 = Robot.query.filter_by(robot_code="OFS-R1").first() or Robot(robot_code="OFS-R1")
-    robot2 = Robot.query.filter_by(robot_code="OFS-R2").first() or Robot(robot_code="OFS-R2")
-    robot1.status, robot1.current_latitude, robot1.current_longitude = "available", STORE[0], STORE[1]
-    robot2.status, robot2.current_latitude, robot2.current_longitude = "available", STORE[0], STORE[1]
-    db.session.add_all([robot1, robot2])
+    # The fleet: seed_demo.py creates ROBOT-01..03 parked at the store. Past trips are spread across
+    # the first two; ROBOT-01 is also the one out on the live trip below.
+    fleet = {}
+    for code in ("ROBOT-01", "ROBOT-02", "ROBOT-03"):
+        fleet[code] = Robot.query.filter_by(robot_code=code).first() or Robot(robot_code=code)
+        fleet[code].status = "available"
+        fleet[code].current_latitude, fleet[code].current_longitude = STORE
+        db.session.add(fleet[code])
+    robot1, robot2 = fleet["ROBOT-01"], fleet["ROBOT-02"]
 
     # --- history: delivered orders in clusters of 1-3 per delivery window, two or three a day ---
     delivered = []
@@ -305,13 +328,15 @@ def build_history(now=None):
             new_status=CANCELLED, reason=reason, created_at=when)))
 
     # --- too heavy for a Robot (over 200 lb): waits in Manual Review ---
-    h.make_order(h.customers[2], day(2, 15, 5), [(h.products[WATER], 9)], MANUAL_REVIEW, address_index=3)
+    over_limit = [(h.products[WATER], 9)]
+    assert h._float_exact(over_limit), "the over-200 lb demo basket must have exact totals"
+    h.make_order(h.customers[2], day(2, 15, 5), over_limit, MANUAL_REVIEW, address_index=3)
 
     # --- live orders, relative to now, so the dashboards have work in every state ---
     c = h.customers
     cases = h._basket
 
-    # Out for delivery on Robot OFS-R1, a few minutes into its run.
+    # Out for delivery on ROBOT-01, a few minutes into its run.
     out = [h.make_order(c[0], now - timedelta(minutes=52), cases(), OUT_FOR_DELIVERY, address_index=0),
            h.make_order(c[1], now - timedelta(minutes=48), cases(), OUT_FOR_DELIVERY, address_index=2)]
     route = h._route(out)
@@ -327,6 +352,11 @@ def build_history(now=None):
         trip.stops[-1].order = order
         order.trip = trip
     first = route[0]
+    # The route the Dispatch and Track maps draw: store -> each stop in order -> back to the store.
+    trip.route_geometry = {"type": "LineString",
+                           "coordinates": [[STORE[1], STORE[0]]]
+                                          + [[o.delivery_lng, o.delivery_lat] for o in route]
+                                          + [[STORE[1], STORE[0]]]}
     robot1.status = "out_for_delivery"
     robot1.current_latitude = round((STORE[0] + first.delivery_lat) / 2, 6)
     robot1.current_longitude = round((STORE[1] + first.delivery_lng) / 2, 6)

@@ -69,7 +69,7 @@ demo data:
 
 - 38 products in 6 categories (one low-stock, one out-of-stock, one inactive). `Spring Water (case
   of 24)` weighs 26 lb: one case triggers the $10 fee and 8 cases (208 lb) are blocked (Scenario 3).
-- About 80 orders over the last 14 days in every status, with payments, trips, two Robots, a
+- About 80 orders over the last 14 days in every status, with payments, trips, three Robots, a
   Manager cancel with a reason and stock edits, so the reports have numbers.
 - Live state: new orders in the prep queue, a trip ready to dispatch, and a trip out for delivery
   with a Robot partway along its route (so the Track page has something to show).

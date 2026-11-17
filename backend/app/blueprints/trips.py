@@ -13,7 +13,9 @@ from ..extensions import db
 from ..models import Trip
 from ..models.order import OUT_FOR_DELIVERY
 from ..models.trip import DISPATCHED, NOT_DISPATCHED, OPEN, READY
+from .. import notifications, robot as fleet
 from ..planning import lock_due_trips, trip_deadline
+from ..routing import optimize_route
 from ..timeutil import iso_utc
 
 bp = Blueprint("trips", __name__, url_prefix="/api/trips")
@@ -28,6 +30,21 @@ def _view(trip, now):
     out = trip.to_dict()
     out["deadline"] = deadline.isoformat() if deadline else None
     out["overdue"] = bool(deadline and deadline <= now and trip.status in NOT_DISPATCHED)
+    out["routeGeometry"] = trip.route_geometry
+    out["stops"] = [
+        {
+            "number": s.stop_number,
+            "orderId": s.order_id,
+            "status": s.status,
+            "lat": float(s.latitude),
+            "lng": float(s.longitude),
+            "estimatedArrival": iso_utc(s.estimated_arrival),
+            "arrivedAt": iso_utc(s.arrived_at),
+        }
+        for s in trip.stops
+    ]
+    out["robotId"] = trip.robot_id
+    out["estimatedDurationMinutes"] = trip.estimated_duration_minutes
     out["orders"] = [
         {
             "id": o.id,
@@ -70,9 +87,22 @@ def dispatch_trip(trip_id):
     if not trip.orders:
         return _error("empty_trip", "This trip has no orders.", 409)
 
+    robot = fleet.pick_robot()
+    if robot is None:
+        return _error("no_robot_available", "No Robot is free right now.", 409)
+
     now = datetime.now(timezone.utc)
+    optimize_route(trip, now)  # T14: stop order + route
+    if not fleet.start_trip(robot, trip):  # T15: assign + load
+        db.session.rollback()
+        return _error("no_robot_available", "No Robot is free right now.", 409)
     trip.status, trip.dispatched_at = DISPATCHED, now
     for order in trip.orders:
         order.status = OUT_FOR_DELIVERY
     db.session.commit()
+    for order in trip.orders:
+        notifications.notify_status_change(order)
+    fleet.rebalance_reserve()
+    fleet.launch(trip.id)
+    db.session.refresh(trip)
     return jsonify(_view(trip, now))

@@ -1,7 +1,8 @@
 # T02: database schema and migrations
 
-The application has 14 tables: users, addresses, products, inventory_log, carts,
-cart_lines, orders, order_lines, payments, robots, trips, trip_stops, app_settings, and notifications.
+The application has 16 tables: users, addresses, products, inventory_log, carts,
+cart_lines, orders, order_lines, payments, robots, trips, trip_stops, app_settings,
+notifications, delivery_settings, and order_override_audits.
 The models are registered in `backend/app/models/__init__.py`.
 
 ## Migrations

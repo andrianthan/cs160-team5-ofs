@@ -36,9 +36,14 @@ class Config:
     SMTP_PORT = int(os.environ.get("SMTP_PORT", 587))
     SMTP_USERNAME = os.environ.get("SMTP_USERNAME")
     SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD")
-    SMTP_FROM = os.environ.get("SMTP_FROM")
+    # Falls back to the sending address, so setting the username is enough.
+    SMTP_FROM = os.environ.get("SMTP_FROM") or (
+        f"Basil <{SMTP_USERNAME}>" if SMTP_USERNAME else None
+    )
     SMTP_STARTTLS = os.environ.get("SMTP_STARTTLS", "1") != "0"
-    SMTP_TIMEOUT_S = 10
+    # Gmail's first TLS handshake can take longer than 10s, which failed the send before the
+    # password was even checked.
+    SMTP_TIMEOUT_S = int(os.environ.get("SMTP_TIMEOUT_S", 30))
 
     # T17: emails go out from a background thread so a slow mail server never delays checkout.
     NOTIFICATIONS_ASYNC = True
@@ -53,9 +58,26 @@ class Config:
     TRIP_DISPATCH_TIMEOUT_MIN = 30
     TRIP_GROUP_RADIUS_KM = 0.5  # every Order on a Trip is within this of the others
 
+    # T14/T15: the store every Robot leaves from and returns to (downtown San Jose by default).
+    STORE_LAT = float(os.environ.get("STORE_LAT", 37.3352))
+    STORE_LNG = float(os.environ.get("STORE_LNG", -121.8811))
+    ROBOT_SPEED_KMH = 8.0  # used for ETAs when Mapbox isn't available
+    ROBOT_SIM_ENABLED = True  # off: Robots are assigned but never drive (unit tests of Dispatch)
+    ROBOT_SIM_ASYNC = True  # run Trips on a background thread; tests run them inline
+    # The speed knobs are env-configurable so a demo can slow the Robot down enough to
+    # actually watch it move on the customer map (which refreshes every 10 seconds).
+    ROBOT_SIM_TICK_S = float(os.environ.get("ROBOT_SIM_TICK_S", 1.0))  # seconds between position updates (0 = no waiting)
+    ROBOT_SIM_STEPS = int(os.environ.get("ROBOT_SIM_STEPS", 10))  # position updates per leg of the route
+    ROBOT_SIM_DWELL_S = float(os.environ.get("ROBOT_SIM_DWELL_S", 3.0))  # time spent at each stop handing over the order
+
 
 class TestConfig(Config):
     TESTING = True
     NOTIFICATIONS_ASYNC = False
     NOTIFY_RETRY_DELAY_S = 0
+    ROBOT_SIM_ASYNC = False
+    MAPBOX_ACCESS_TOKEN = None  # tests never call the real Mapbox
+    ROBOT_SIM_TICK_S = 0
+    ROBOT_SIM_DWELL_S = 0
+    ROBOT_SIM_STEPS = 2
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"

@@ -133,13 +133,33 @@ def _send_with_retry(row, msg):
     db.session.commit()
 
 
+def _login(server, username, password):
+    """Log in to the SMTP server, preferring PLAIN when the server offers it.
+
+    Two things go wrong without this. Python's starttls() discards the server's feature
+    list (RFC 3207) and does not re-issue EHLO, so esmtp_features is empty afterwards and
+    the advertised AUTH methods are unknown. And smtplib's login() tries PLAIN and then
+    falls through to LOGIN when the server offers both; Gmail closes the connection right
+    after it rejects an AUTH, so that fall-through turns a clear "535 username and
+    password not accepted" into an opaque "Connection unexpectedly closed", which is what
+    gets logged and shown to staff. Doing the PLAIN exchange ourselves keeps the server's
+    real answer.
+    """
+    server.ehlo_or_helo_if_needed()
+    server.user, server.password = username, password
+    if "PLAIN" in server.esmtp_features.get("auth", "").split():
+        server.auth("PLAIN", server.auth_plain)
+    else:
+        server.login(username, password)
+
+
 def _send(msg):
     cfg = current_app.config
     with smtplib.SMTP(cfg["SMTP_HOST"], cfg["SMTP_PORT"], timeout=cfg["SMTP_TIMEOUT_S"]) as server:
         if cfg["SMTP_STARTTLS"]:
             server.starttls()
         if cfg.get("SMTP_USERNAME"):
-            server.login(cfg["SMTP_USERNAME"], cfg.get("SMTP_PASSWORD") or "")
+            _login(server, cfg["SMTP_USERNAME"], cfg.get("SMTP_PASSWORD") or "")
         server.send_message(msg)
 
 

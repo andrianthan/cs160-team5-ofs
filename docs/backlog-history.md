@@ -50,12 +50,22 @@ Status below comes from reading the code on `origin/main` (2026-11-12) and runni
 | T19 | Manager Reports | Andrian | Andrian | 2026-11-03 | 2026-11-03 | Partial. Sales, inventory snapshot, delivery success rate. No stock adjustment history (no log), and I found no trip utilization metric. |
 | T20 | Delivery Pause and Order Override | Jorge | Jorge | 2026-10-21 | 2026-11-12 | Partial. Pause API works and blocks payment creation. Override supports cancel with a required reason. The pause settings page and the storefront pause notice are not on `main`. |
 
-Summary: 10 done (T02, T03, T04, T06, T07, T08, T09, T10, T11, T17), 8 partial or mostly done (T01, T05, T12, T13, T16, T18, T19, T20), 2 not on `main` (T14, T15).
+Summary as of the 2026-11-12 snapshot: 10 done (T02, T03, T04, T06, T07, T08, T09, T10, T11, T17), 8 partial or mostly done (T01, T05, T12, T13, T16, T18, T19, T20), 2 not on `main` (T14, T15).
 
-### Known problems on `main`
-- The storefront fails `tsc`: `src/App.tsx` imports `./pages/TrackOrdersPage`, which does not exist on `main`. `RobotMap.tsx` and `TrackOrdersPage.tsx` are only on `origin/t16-order-tracking`.
-- `frontend/staff-dashboard/src/pages/DispatchPage.tsx` is an empty component, and the `/dispatch` route renders a placeholder stub instead.
-- Stale comment in `reports.py` says there is no `inventory_log` table, but the table exists and is simply never written.
+**Updated 2026-11-16 — all 20 tasks are now implemented and merged.** The table above is the 2026-11-12 snapshot, kept as history. Since then T14 and T15 shipped in PR #12 (robot controls and the delivery-pause UI in PR #14), the Dispatch page shipped in PR #15, and T19 gained on-time rate, delivery duration and trip utilization in PR #16. The per-task history below carries the detail for each of those.
+
+### Known problems on `main` — as of the 2026-11-12 snapshot
+
+All three were fixed after it:
+
+- ~~The storefront fails `tsc`: `src/App.tsx` imports `./pages/TrackOrdersPage`, which does not exist on `main`.~~ **Fixed** — the tracking page and the robot map are merged (PR #11); `npm run typecheck` passes on all three workspaces.
+- ~~`frontend/staff-dashboard/src/pages/DispatchPage.tsx` is an empty component, and the `/dispatch` route renders a placeholder stub instead.~~ **Fixed** — PR #12 shipped the Dispatch page with the fleet, the live map, trips and dispatch.
+- ~~Stale comment in `reports.py` says there is no `inventory_log` table, but the table exists and is simply never written.~~ **Fixed** — every Stock change writes `inventory_log` in the same transaction (PR #10, branch `shresth/t05-t12-inventory-log-order-history`).
+
+Two that are still true, and are deliberate:
+
+- No Apache or gunicorn deployment config is in the repo yet (T01 is partial for that reason).
+- The customer map is Leaflet with OpenStreetMap tiles, not the Mapbox GL JS that the Part I HLD named. Mapbox does the geocoding, the address autofill and the route optimisation.
 
 ## Per-task history
 
@@ -139,11 +149,14 @@ Summary: 10 done (T02, T03, T04, T06, T07, T08, T09, T10, T11, T17), 8 partial o
 ### T14 Route Optimizer (assigned: Ethan)
 - 2026-11-02 Ethan: "T14 logic with placeholder values/variables" in `trips.py`.
 - Ethan's draft computed nearest-neighbor distances through Mapbox in `trips.py`, but it was overwritten by Kelvin's trip code on 11/4. `main` has no Mapbox Optimization call.
+- 2026-11-16 Andrian: the Mapbox Optimization call is now on `main`, in `backend/app/routing.py` (`optimize_route`), written as its own module instead of inside `trips.py`, with a nearest-neighbour fallback when Mapbox is unavailable. Merged in PR #12 (`b6bed4a`); checked live against the Mapbox API on 11/16.
 
 ### T15 Simulated robot fleet (assigned: Ethan)
 - The `robots` table and model arrived with T02 (Anuj, Kelvin).
 - 2026-11-12 Ethan: "partial T15", adds `backend/app/blueprints/robot.py` (`45642d0`). It exists only on `origin/t15-fleet-sim` and is not merged into `main`.
 - Jorge's 2026-10-06 commit added robot tracking and ETA to the UI prototype only.
+- 2026-11-15 to 2026-11-16 Ethan: continued `backend/app/robot.py` on `t15-fleet-sim` — "still partial t15" (`091e11e`), "transition logic should be done" (`9e339a3`), "travel simulation logic done i think" (`fd6ed96`), "comments and value changes while i try stuff" (`dbfb681`), "pseuodocode for new robot travel sim" (`eff4348`), "pseudocode for return home" (`cd5d36b`). At `cd5d36b` the file was 255 lines.
+- 2026-11-16 Andrian: **Ethan's `backend/app/robot.py` was rewritten, and the rewrite is what shipped.** `e974248` and `6f52c6a` were committed on top of `t15-fleet-sim`, then merged to `main` as PR #12 (`b6bed4a`) and PR #14 (`6243191`). What changed: the `Robot` class became a thin wrapper over the `robots` row with module-level functions (`pick_robot`, `rebalance_reserve`, `start_trip`, `launch`, `run_trip`); `load_bot()`'s `input()` prompt became the Employee's Dispatch click; `do_trip()`'s stub became a real `run_trip()` that drives every stop and sends the customer delivery email; `reserve_bot()` became `rebalance_reserve()`; `return_home()` became the `last_stop` → `depot_reached` leg. What was kept: the state machine, every state and event name, and the header line "Owner: Notario Ethan Rodriguez". Ethan's commits are not ancestors of `main` (squash-merged), so `git log main` does not show them — his code is in `main`, his commits are not.
 
 ### T16 Order Tracking and live map (assigned: Jorge)
 - 2026-10-06 Jorge: robot tracking and ETA in the UI prototype.

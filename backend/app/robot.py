@@ -33,7 +33,8 @@ IN_DEPOT = (AVAILABLE, RESERVED)
 TRANSITIONS = {
     AVAILABLE: {"trip_assigned": LOADING, "manual_override": OFFLINE, "last_bot": RESERVED,
                 "critical_failure": OFFLINE},
-    RESERVED: {"multiple_bots": AVAILABLE, "trip_assigned": LOADING, "critical_failure": OFFLINE},
+    RESERVED: {"multiple_bots": AVAILABLE, "trip_assigned": LOADING, "manual_override": OFFLINE,
+               "critical_failure": OFFLINE},
     LOADING: {"loading_complete": OUT_FOR_DELIVERY, "trip_canceled": AVAILABLE, "critical_failure": OFFLINE},
     OUT_FOR_DELIVERY: {"last_stop": RETURNING, "critical_failure": OFFLINE},
     RETURNING: {"depot_reached": AVAILABLE, "critical_failure": OFFLINE},
@@ -89,7 +90,9 @@ class Robot:
         db.session.commit()
 
     def manual_override(self):
-        return self.trigger("manual_override")
+        ok = self.trigger("manual_override")
+        rebalance_reserve()  # the depot may now have a single Robot left
+        return ok
 
     def critical_failure(self):
         return self.trigger("critical_failure")

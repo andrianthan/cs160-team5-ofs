@@ -25,9 +25,12 @@ LOADING = "loading"
 OUT_FOR_DELIVERY = "out_for_delivery"
 RETURNING = "returning"
 OFFLINE = "offline"
-# TODO: use actual coordinates of the store
-STORE_LAT = 0.0
-STORE_LONG = 0.0
+
+# TODO: use actual coordinates of the store, using coords of duncan hall as placeholder:
+# 37.332339712229526, -121.88183268335278
+STORE_LAT = 37.332339712229526
+STORE_LONG = -121.88183268335278
+
 # for battery; not outlined in doc, implementation optional (maybe?)
 '''
 MAX_BAT = 100.0
@@ -118,7 +121,7 @@ class Robot():
         route_coords = route_geoemetry.get("coordinates", []) if isinstance(route_geoemetry, dict) else route_geoemetry
         
         trip.robot = self.bot
-        stops = trip.stops
+        stops = trip.stops #should already be ordered by stop number
         time_elapsed_seconds = 0
         
         current_stop_idx = 0

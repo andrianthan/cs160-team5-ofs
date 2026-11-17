@@ -30,6 +30,19 @@ def _view(trip, now):
     out = trip.to_dict()
     out["deadline"] = deadline.isoformat() if deadline else None
     out["overdue"] = bool(deadline and deadline <= now and trip.status in NOT_DISPATCHED)
+    out["routeGeometry"] = trip.route_geometry
+    out["stops"] = [
+        {
+            "number": s.stop_number,
+            "orderId": s.order_id,
+            "status": s.status,
+            "lat": float(s.latitude),
+            "lng": float(s.longitude),
+            "estimatedArrival": iso_utc(s.estimated_arrival),
+            "arrivedAt": iso_utc(s.arrived_at),
+        }
+        for s in trip.stops
+    ]
     out["robotId"] = trip.robot_id
     out["estimatedDurationMinutes"] = trip.estimated_duration_minutes
     out["orders"] = [

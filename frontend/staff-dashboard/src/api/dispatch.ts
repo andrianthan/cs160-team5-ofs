@@ -69,3 +69,17 @@ export async function listRobots() {
 export async function dispatchTrip(id: number) {
     return friendly(await apiRequest<DispatchTrip>(`/api/trips/${id}/dispatch`, jsonRequest("POST")));
 }
+
+// Maintenance: a Robot in the depot can be taken out of service and brought back.
+export async function setRobotOnline(id: number, online: boolean) {
+    return friendly(await apiRequest<Robot>(`/api/robots/${id}/${online ? "online" : "offline"}`, jsonRequest("POST")));
+}
+
+// BR-9: a Manager pauses new deliveries; checkout is blocked while paused.
+export async function getDeliveryPause() {
+    return friendly(await apiRequest<{ paused: boolean }>("/api/settings/delivery-pause"));
+}
+
+export async function setDeliveryPause(paused: boolean) {
+    return friendly(await apiRequest<{ paused: boolean }>("/api/settings/delivery-pause", jsonRequest("PUT", { paused })));
+}

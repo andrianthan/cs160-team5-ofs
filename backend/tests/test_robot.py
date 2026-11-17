@@ -112,3 +112,31 @@ def test_tracking_shows_finished_trip_and_robot_home(app, client, staff):
     assert body["trip"]["status"] == "completed" and body["trip"]["estimatedDurationMinutes"] >= 1
     assert body["robot"]["robotCode"] == "R-1"
     assert (body["robot"]["latitude"], body["robot"]["longitude"]) == (app.config["STORE_LAT"], app.config["STORE_LNG"])
+
+
+# ---- offline / online controls ----
+
+def test_take_robot_offline_and_back(app, client, staff):
+    add_robots(3)
+    resp = client.post("/api/robots/1/offline")
+    assert resp.status_code == 200 and resp.get_json()["status"] == "offline"
+    assert client.post("/api/robots/1/offline").status_code == 409  # already offline
+    resp = client.post("/api/robots/1/online")
+    assert resp.status_code == 200 and resp.get_json()["status"] == "available"
+    assert client.post("/api/robots/1/online").status_code == 409  # not offline any more
+    assert client.post("/api/robots/99/offline").status_code == 404
+
+
+def test_robot_on_a_trip_cannot_be_pulled(app, client, staff):
+    (r,) = add_robots(1)
+    r.trigger("trip_assigned")
+    assert client.post(f"/api/robots/{r.model.id}/offline").status_code == 409
+
+
+def test_offline_robot_never_gets_a_trip_and_reserve_follows(app, client, staff):
+    add_robots(2)
+    client.post("/api/robots/1/offline")  # R-2 is now the last one in the depot
+    assert db.session.get(RobotModel, 2).status == "reserved"
+    trip_id = prepare(client, make_order(staff))["id"]
+    assert client.post(f"/api/trips/{trip_id}/dispatch").status_code == 200  # reserve may still be sent
+    assert db.session.get(RobotModel, 1).status == "offline"

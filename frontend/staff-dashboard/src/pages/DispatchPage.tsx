@@ -1,6 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { dispatchTrip, listRobots, listTrips, type DispatchTrip, type Robot, type RobotStatus } from "../api/dispatch";
+import { useAuth } from "@ofs/shared";
+
+import {
+    dispatchTrip,
+    getDeliveryPause,
+    listRobots,
+    listTrips,
+    setDeliveryPause,
+    setRobotOnline,
+    type DispatchTrip,
+    type Robot,
+    type RobotStatus,
+} from "../api/dispatch";
 
 const FAST_MS = 3_000; // a Robot is out: show it moving
 const SLOW_MS = 15_000;
@@ -100,6 +112,9 @@ function RouteMap({ trips, robots }: { trips: DispatchTrip[]; robots: Robot[] })
 }
 
 export default function DispatchPage() {
+    const { user } = useAuth();
+    const isManager = user?.role === "manager";
+    const [paused, setPaused] = useState(false);
     const [trips, setTrips] = useState<DispatchTrip[]>([]);
     const [robots, setRobots] = useState<Robot[]>([]);
     const [loading, setLoading] = useState(true);
@@ -108,7 +123,8 @@ export default function DispatchPage() {
     const [busyId, setBusyId] = useState<number | null>(null);
 
     const refresh = useCallback(async () => {
-        const [t, r] = await Promise.all([listTrips(), listRobots()]);
+        const [t, r, p] = await Promise.all([listTrips(), listRobots(), getDeliveryPause()]);
+        if (p.ok) setPaused(p.data.paused);
         if (t.ok && r.ok) {
             setTrips(t.data.trips);
             setRobots(r.data.robots);
@@ -141,6 +157,25 @@ export default function DispatchPage() {
         await refresh();
     };
 
+    const togglePause = async () => {
+        setNotice(null);
+        setError(null);
+        const result = await setDeliveryPause(!paused);
+        if (result.ok) {
+            setPaused(result.data.paused);
+            setNotice(result.data.paused ? "New deliveries paused. Customers can't check out." : "Deliveries resumed.");
+        } else setError(result.data.message);
+    };
+
+    const toggleRobot = async (robot: Robot) => {
+        setNotice(null);
+        setError(null);
+        const result = await setRobotOnline(robot.id, robot.status === "offline");
+        if (result.ok) setNotice(`${robot.code} is ${result.data.status === "offline" ? "offline for maintenance" : "back in the depot"}.`);
+        else setError(result.data.message);
+        await refresh();
+    };
+
     const free = robots.filter((r) => r.status === "available" || r.status === "reserved").length;
     const button = "px-3 py-1.5 rounded-full text-sm font-medium cursor-pointer disabled:opacity-50 transition-colors duration-200";
 
@@ -148,10 +183,27 @@ export default function DispatchPage() {
         <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <h1 className="font-display text-2xl font-bold">Dispatch</h1>
-                <button type="button" onClick={() => void refresh()} className={`${button} bg-brand-50 text-brand-700 hover:bg-brand-100`}>
-                    Refresh
-                </button>
+                <div className="flex flex-wrap gap-2">
+                    {isManager && (
+                        <button
+                            type="button"
+                            onClick={() => void togglePause()}
+                            className={`${button} ${paused ? "bg-brand-600 text-white hover:bg-brand-700" : "bg-red-50 text-red-700 hover:bg-red-100"}`}
+                        >
+                            {paused ? "Resume deliveries" : "Pause deliveries"}
+                        </button>
+                    )}
+                    <button type="button" onClick={() => void refresh()} className={`${button} bg-brand-50 text-brand-700 hover:bg-brand-100`}>
+                        Refresh
+                    </button>
+                </div>
             </div>
+
+            {paused && (
+                <p role="status" className="text-sm bg-gold-100 text-gold-800 border border-gold-200 rounded-xl px-3 py-2.5">
+                    Deliveries are paused: customers can't check out until a Manager resumes them.
+                </p>
+            )}
 
             {notice && (
                 <p role="status" className="text-sm bg-brand-50 text-brand-800 border border-brand-200 rounded-xl px-3 py-2.5">
@@ -185,6 +237,15 @@ export default function DispatchPage() {
                                         <div className="text-xs text-brand-900/50 mt-1">
                                             {r.lat !== null && r.lng !== null ? `${r.lat.toFixed(4)}, ${r.lng.toFixed(4)}` : "no position"} · updated {clock(r.updatedAt)}
                                         </div>
+                                        {(r.status === "available" || r.status === "reserved" || r.status === "offline") && (
+                                            <button
+                                                type="button"
+                                                onClick={() => void toggleRobot(r)}
+                                                className={`${button} mt-2 ${r.status === "offline" ? "bg-brand-600 text-white hover:bg-brand-700" : "bg-brand-50 text-brand-700 hover:bg-brand-100"}`}
+                                            >
+                                                {r.status === "offline" ? "Back online" : "Take offline"}
+                                            </button>
+                                        )}
                                     </li>
                                 ))}
                             </ul>

@@ -123,6 +123,14 @@ Put that `whsec_...` in `backend/.env` as `STRIPE_WEBHOOK_SECRET` (once; it stay
 `docker compose up -d --force-recreate backend`. Test with the checkout page and card
 `4242 4242 4242 4242`; `stripe trigger` fails on the newest Stripe API version.
 
+**Which Stripe webhook option should I use?**
+
+| You are running | Use | Notes |
+|---|---|---|
+| In Docker | the `stripe` service above | Starts with the stack, needs no Stripe CLI install, and authenticates with `STRIPE_SECRET_KEY`, so there is no login to expire. The signing secret stays the same across restarts |
+| Locally without Docker (macOS) | `cd backend && ./start_stripe_listener.sh` | Starts the Stripe CLI on your machine, and writes the new signing secret into `backend/.env`. It forwards to port 5001 by default (`PORT=5000 ./start_stripe_listener.sh` for 5000), needs `stripe login` first (that login expires about daily), and uses macOS `sed`, so on Linux run `stripe listen` yourself (see Local development) |
+| A real, public deployment | a webhook endpoint created in the Stripe Dashboard | Point it at `https://<your-site>/api/payments/webhook` and put its `whsec_...` in the server's `STRIPE_WEBHOOK_SECRET`. No CLI runs next to the backend. Neither option above is meant for this |
+
 **Docker troubleshooting.** Run `docker compose logs --tail 40 backend` and read the last error.
 
 | Symptom | Cause and fix |

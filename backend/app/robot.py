@@ -1,5 +1,5 @@
 from flask import request
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from .models.robot import Robot as RobotModel
 from .models.trip import Trip
 from .models.trip_stop import TripStop
@@ -102,6 +102,18 @@ class Robot():
     def get_current_long(self):
         return self.longitude
 
+    # TODO: request a robot to do a trip (dispatch) - probably remove do_trip() and travel()
+    def dispatch_trip(trip:Trip, status=AVAILABLE):
+        # search db for available robot, or reserved if specified
+        # if none, notify
+        # Mapbox Optimization call - gives distance(meters), duration(seconds), geometry
+        # update Trip dispatched_at = now, estimated_duration = now + duration, geometry = geometry
+        # for each order in trip.orders and each stop in trip.stops:
+        # increment simulated_timer(starting from now) by this leg's estimated duration, set arrival and completion to timer value
+        # have robot under OUT_FOR_DELIVERY state until estimated completed time
+        # can do this incremented timer OR actually wait or sleep for duration, then update in real time
+        return
+    
     # TODO: simulate robot movement on given route
     # if using same route in my old T14 mapbox api call, should be round trip
     def do_trip(self, trip:Trip):
@@ -122,7 +134,7 @@ class Robot():
         
         trip.robot = self.bot
         stops = trip.stops #should already be ordered by stop number
-        time_elapsed_seconds = 0
+        time_elapsed_seconds = 0.0
         
         current_stop_idx = 0
 
@@ -140,7 +152,8 @@ class Robot():
             
             # Simulate time passing between nodes (adjust based on desired simulation speed)
             #time.sleep(1) 
-            time_elapsed_seconds+=1
+            time_elapsed_seconds+=1 #should be duration of stop -> stop
+            # can get durations from mapbox optimization call but not from trip or trip stop model objects
             #timer needs to be non-blocking - using counter for now
             
             # Check if we are close to the next stop (e.g., within 15 meters)

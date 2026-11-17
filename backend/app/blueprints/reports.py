@@ -8,7 +8,13 @@
 #   - Average order value = revenue / order count (0 when there are no orders).
 #   - Product demand = units sold and line revenue per Product over the sales orders.
 #   - Delivery success rate = Delivered / (Delivered + Delivery Failed). None when neither exists.
-#   - On-time rate: None until Trips carry ETAs (T13/T15) — there is nothing to compare against yet.
+#   - On-time rate = delivered stops that arrived at or before their estimated arrival (set when the Trip
+#     was dispatched) / delivered stops that have an ETA. Stops belong to the period of their Order.
+#     None when there are none.
+#   - Delivery duration = minutes from the Order being placed to the Robot arriving at its stop, averaged
+#     over those same delivered stops. None when there are none.
+#   - Trip utilization, over Trips dispatched in the period: average orders per Trip, and the average fill
+#     of the Robot limits (orders / TRIP_MAX_ORDERS, weight / TRIP_MAX_WEIGHT_LB). None when no Trip went out.
 from collections import defaultdict
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
@@ -16,8 +22,11 @@ from decimal import Decimal
 from flask import Blueprint, jsonify, request
 
 from .auth import manager_required
-from ..models import Order, OrderLine, Product
+from ..config import Config
+from ..models import Order, OrderLine, Product, Trip, TripStop
 from ..models.order import CANCELLED, DELIVERED, DELIVERY_FAILED, STATUSES
+from ..models.trip import DISPATCHED, COMPLETED
+from ..timeutil import as_utc
 
 bp = Blueprint("reports", __name__, url_prefix="/api/reports")
 
@@ -50,6 +59,32 @@ def _period():
 
 def _orders_in(start, end):
     return Order.query.filter(Order.created_at >= start, Order.created_at < end).all()
+
+
+def _delivery_timing(start, end):
+    """(on-time rate, average delivery minutes) over delivered stops with an ETA; (None, None) if none."""
+    stops = (TripStop.query.join(Order, TripStop.order_id == Order.id)
+             .filter(Order.created_at >= start, Order.created_at < end, TripStop.status == "delivered",
+                     TripStop.estimated_arrival.isnot(None), TripStop.arrived_at.isnot(None)).all())
+    if not stops:
+        return None, None
+    on_time = sum(1 for s in stops if as_utc(s.arrived_at) <= as_utc(s.estimated_arrival))
+    minutes = [(as_utc(s.arrived_at) - as_utc(s.order.created_at)).total_seconds() / 60 for s in stops]
+    return on_time / len(stops), sum(minutes) / len(minutes)
+
+
+def _trip_utilization(start, end):
+    trips = Trip.query.filter(Trip.status.in_((DISPATCHED, COMPLETED)),
+                              Trip.dispatched_at >= start, Trip.dispatched_at < end).all()
+    if not trips:
+        return None
+    n = len(trips)
+    return {
+        "trips": n,
+        "avgOrdersPerTrip": sum(len(t.orders) for t in trips) / n,
+        "avgOrderFill": sum(len(t.orders) / Config.TRIP_MAX_ORDERS for t in trips) / n,
+        "avgWeightFill": sum(float(t.weight_lb) / Config.TRIP_MAX_WEIGHT_LB for t in trips) / n,
+    }
 
 
 @bp.get("/sales")
@@ -133,6 +168,7 @@ def delivery_report():
     for o in _orders_in(start, end):
         counts[o.status] += 1
 
+    on_time_rate, avg_minutes = _delivery_timing(start, end)
     delivered, failed = counts[DELIVERED], counts[DELIVERY_FAILED]
     finished = delivered + failed
     return jsonify(
@@ -143,6 +179,8 @@ def delivery_report():
             "delivered": delivered,
             "failed": failed,
             "deliverySuccessRate": delivered / finished if finished else None,
-            "onTimeRate": None,
+            "onTimeRate": on_time_rate,
+            "avgDeliveryMinutes": avg_minutes,
+            "tripUtilization": _trip_utilization(start, end),
         }
     )

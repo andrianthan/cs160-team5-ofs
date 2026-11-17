@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 from app.extensions import db
@@ -138,10 +138,41 @@ def test_delivery_performance(app, client):
     assert data["statusCounts"][CANCELLED] == 1
     assert data["delivered"] == 2 and data["failed"] == 1
     assert round(data["deliverySuccessRate"], 4) == round(2 / 3, 4)
-    assert data["onTimeRate"] is None  # needs trip ETAs (T13/T15)
+    assert data["onTimeRate"] is None  # no stops with ETAs in the seed
+    assert data["tripUtilization"] is None  # and no trips
 
 
 def test_delivery_no_completed_orders(app, client):
     login_as(client, app, "manager")
     data = client.get("/api/reports/delivery?from=2026-01-01&to=2026-01-02").get_json()
     assert data["deliverySuccessRate"] is None
+
+
+def test_on_time_rate_and_trip_utilization(app, client):
+    from app.models import Trip, TripStop
+
+    uid = login_as(client, app, "manager")
+    seed(app, uid)
+    day = datetime(2026, 11, 2, 12, 0, tzinfo=timezone.utc)
+    with app.app_context():
+        orders = Order.query.filter_by(status=DELIVERED).order_by(Order.id).all()
+        trip = Trip(status="completed", dispatched_at=day)
+        db.session.add(trip)
+        db.session.flush()
+        for n, order in enumerate(orders, start=1):
+            order.trip_id = trip.id
+            late = n == 2  # second stop arrives 5 min after its ETA
+            db.session.add(TripStop(
+                trip_id=trip.id, order_id=order.id, stop_number=n, latitude=37.3, longitude=-121.9,
+                status="delivered", estimated_arrival=day + timedelta(minutes=10 * n),
+                arrived_at=day + timedelta(minutes=10 * n + (5 if late else -1)),
+            ))
+        db.session.commit()
+        weight = float(trip.weight_lb)
+
+    data = client.get("/api/reports/delivery?from=2026-11-01&to=2026-11-03").get_json()
+    assert data["onTimeRate"] == 0.5
+    assert data["avgDeliveryMinutes"] > 0
+    util = data["tripUtilization"]
+    assert util["trips"] == 1 and util["avgOrdersPerTrip"] == 2
+    assert util["avgOrderFill"] == 0.2 and round(util["avgWeightFill"], 6) == round(weight / 200, 6)

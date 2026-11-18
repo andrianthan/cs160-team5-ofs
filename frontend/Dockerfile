@@ -10,7 +10,10 @@ ENV VITE_STRIPE_PUBLISHABLE_KEY=$VITE_STRIPE_PUBLISHABLE_KEY \
 WORKDIR /repo
 COPY package.json package-lock.json ./
 COPY frontend ./frontend
-RUN npm ci && npm run build -w ${APP}
+# The committed package-lock.json only lists Linux x64 native binaries (Tailwind oxide, lightningcss,
+# rolldown), so `npm ci` fails on arm64 hosts (Apple Silicon). Re-resolve inside the image so the right
+# native packages are fetched for whatever platform Docker builds on. Local installs still use the lockfile.
+RUN rm -f package-lock.json && npm install --no-audit --no-fund && npm run build -w ${APP}
 
 FROM httpd:2.4
 ARG APP=storefront

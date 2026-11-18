@@ -71,11 +71,27 @@ export async function dispatchTrip(id: number) {
 }
 
 // Maintenance: a Robot in the depot can be taken out of service and brought back.
+// Move a dispatched Trip's Robot on by hand: deliver the next stop, or return to the store once all are done.
+export async function advanceTrip(id: number) {
+    return friendly(
+        await apiRequest<DispatchTrip & { step: "delivered" | "returned"; stopNumber: number | null }>(`/api/trips/${id}/advance`, jsonRequest("POST")),
+    );
+}
+
 export async function setRobotOnline(id: number, online: boolean) {
     return friendly(await apiRequest<Robot>(`/api/robots/${id}/${online ? "online" : "offline"}`, jsonRequest("POST")));
 }
 
 // BR-9: a Manager pauses new deliveries; checkout is blocked while paused.
+// Managers only: a new Robot (next OFS-R number) parked at the store, or one removed from the fleet for good.
+export async function addRobot() {
+    return friendly(await apiRequest<Robot>("/api/robots", jsonRequest("POST")));
+}
+
+export async function removeRobot(id: number) {
+    return friendly(await apiRequest<{ removed: string }>(`/api/robots/${id}`, jsonRequest("DELETE")));
+}
+
 export async function getDeliveryPause() {
     return friendly(await apiRequest<{ paused: boolean }>("/api/settings/delivery-pause"));
 }

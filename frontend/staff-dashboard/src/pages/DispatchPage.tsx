@@ -3,10 +3,13 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@ofs/shared";
 
 import {
+    addRobot,
+    advanceTrip,
     dispatchTrip,
     getDeliveryPause,
     listRobots,
     listTrips,
+    removeRobot,
     setDeliveryPause,
     setRobotOnline,
     type DispatchTrip,
@@ -51,6 +54,7 @@ export default function DispatchPage() {
     const [error, setError] = useState<string | null>(null);
     const [notice, setNotice] = useState<string | null>(null);
     const [busyId, setBusyId] = useState<number | null>(null);
+    const [adding, setAdding] = useState(false);
 
     const refresh = useCallback(async () => {
         const [t, r, p] = await Promise.all([listTrips(), listRobots(), getDeliveryPause()]);
@@ -87,6 +91,22 @@ export default function DispatchPage() {
         await refresh();
     };
 
+    const advance = async (trip: DispatchTrip) => {
+        setBusyId(trip.id);
+        setNotice(null);
+        setError(null);
+        const result = await advanceTrip(trip.id);
+        if (result.ok) {
+            setNotice(
+                result.data.step === "delivered"
+                    ? `Trip #${trip.id}: stop ${result.data.stopNumber} delivered.`
+                    : `Trip #${trip.id} is complete and its Robot is back at the store.`,
+            );
+        } else setError(result.data.message);
+        setBusyId(null);
+        await refresh();
+    };
+
     const togglePause = async () => {
         setNotice(null);
         setError(null);
@@ -102,6 +122,27 @@ export default function DispatchPage() {
         setError(null);
         const result = await setRobotOnline(robot.id, robot.status === "offline");
         if (result.ok) setNotice(`${robot.code} is ${result.data.status === "offline" ? "offline for maintenance" : "back in the depot"}.`);
+        else setError(result.data.message);
+        await refresh();
+    };
+
+    const add = async () => {
+        setAdding(true);
+        setNotice(null);
+        setError(null);
+        const result = await addRobot();
+        if (result.ok) setNotice(`${result.data.code} added. It's parked at the store, ready for the next Trip.`);
+        else setError(result.data.message);
+        await refresh();
+        setAdding(false);
+    };
+
+    const remove = async (robot: Robot) => {
+        if (!window.confirm(`Remove ${robot.code} from the fleet? This can't be undone (you can add a new Robot later).`)) return;
+        setNotice(null);
+        setError(null);
+        const result = await removeRobot(robot.id);
+        if (result.ok) setNotice(`${result.data.removed} removed from the fleet.`);
         else setError(result.data.message);
         await refresh();
     };
@@ -151,9 +192,16 @@ export default function DispatchPage() {
             ) : (
                 <>
                     <section aria-labelledby="fleet">
-                        <h2 id="fleet" className="font-display text-lg font-semibold mb-2">
-                            Robot fleet <span className="text-sm font-normal text-brand-900/50">· {free} of {robots.length} in the depot</span>
-                        </h2>
+                        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                            <h2 id="fleet" className="font-display text-lg font-semibold">
+                                Robot fleet <span className="text-sm font-normal text-brand-900/50">· {free} of {robots.length} in the depot</span>
+                            </h2>
+                            {isManager && (
+                                <button type="button" disabled={adding} onClick={() => void add()} className={`${button} bg-brand-600 text-white hover:bg-brand-700`}>
+                                    + Add robot
+                                </button>
+                            )}
+                        </div>
                         {robots.length === 0 ? (
                             <p className="text-sm text-brand-900/50 border border-dashed border-brand-200 rounded-xl py-6 text-center">No Robots registered.</p>
                         ) : (
@@ -176,6 +224,15 @@ export default function DispatchPage() {
                                                 {r.status === "offline" ? "Back online" : "Take offline"}
                                             </button>
                                         )}
+                                        {isManager && (r.status === "available" || r.status === "reserved" || r.status === "offline") && (
+                                            <button
+                                                type="button"
+                                                onClick={() => void remove(r)}
+                                                className={`${button} mt-2 ml-2 bg-red-50 text-red-700 hover:bg-red-100`}
+                                            >
+                                                Remove
+                                            </button>
+                                        )}
                                     </li>
                                 ))}
                             </ul>
@@ -189,7 +246,7 @@ export default function DispatchPage() {
                         ) : (
                             <>
                                 <StreetMap trips={trips} robots={robots} />
-                                <p className="text-xs text-brand-900/50 mt-1">Dark labels are Robots, numbered circles are stops on a dispatched Trip (green = delivered), small dots are prepared orders waiting.</p>
+                                <p className="text-xs text-brand-900/50 mt-1">Dark labels are Robots (red = offline), numbered circles are stops on a dispatched Trip (green = delivered), small dots are prepared orders waiting.</p>
                             </>
                         )}
                     </section>
@@ -231,6 +288,17 @@ export default function DispatchPage() {
                                                         className={`${button} bg-brand-600 text-white hover:bg-brand-700`}
                                                     >
                                                         Dispatch
+                                                    </button>
+                                                )}
+                                                {trip.status === "dispatched" && (
+                                                    <button
+                                                        type="button"
+                                                        disabled={busyId === trip.id || robot?.status === "offline"}
+                                                        title="Skip ahead: the Robot goes straight to its next stop and hands over the order (stops the automatic drive for this Trip)"
+                                                        onClick={() => void advance(trip)}
+                                                        className={`${button} bg-gold-100 text-gold-900 hover:bg-gold-200`}
+                                                    >
+                                                        {done === trip.stops.length || robot?.status === "returning" ? "Return to store" : "Next stop"}
                                                     </button>
                                                 )}
                                             </div>

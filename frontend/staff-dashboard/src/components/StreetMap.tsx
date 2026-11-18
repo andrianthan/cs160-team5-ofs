@@ -19,10 +19,13 @@ function stopIcon(n: number, delivered: boolean) {
     return pin(`<div style="${BADGE}${colors};width:24px;height:24px;border-radius:50%">${n}</div>`, 24);
 }
 
+const escapeHtml = (text: string) =>
+    text.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+
 function robotIcon(label: string, offline: boolean) {
     return L.divIcon({
         className: "",
-        html: `<div style="${BADGE}background:${offline ? "#b91c1c" : "#14392a"};color:white;border-radius:6px;padding:2px 6px;white-space:nowrap;transform:translate(-50%,-50%);display:inline-flex">${label}</div>`,
+        html: `<div style="${BADGE}background:${offline ? "#b91c1c" : "#14392a"};color:white;border-radius:6px;padding:2px 6px;white-space:nowrap;transform:translate(-50%,-50%);display:inline-flex">${escapeHtml(label)}</div>`,
         iconSize: [0, 0],
         iconAnchor: [0, 0],
     });

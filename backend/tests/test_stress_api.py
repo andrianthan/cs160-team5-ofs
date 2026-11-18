@@ -50,8 +50,11 @@ ROUTES = {
     ("GET", "/api/robots"): STAFF,
     ("POST", "/api/robots/<int:robot_id>/offline"): STAFF,
     ("POST", "/api/robots/<int:robot_id>/online"): STAFF,
+    ("POST", "/api/robots"): MANAGER,
+    ("DELETE", "/api/robots/<int:robot_id>"): MANAGER,
     ("GET", "/api/trips"): STAFF,
     ("POST", "/api/trips/<int:trip_id>/dispatch"): STAFF,
+    ("POST", "/api/trips/<int:trip_id>/advance"): STAFF,
 }
 # Logout would sign the sweeps' own clients out, so it gets its own test instead.
 SWEPT = {route: access for route, access in ROUTES.items() if route != ("POST", "/api/auth/logout")}

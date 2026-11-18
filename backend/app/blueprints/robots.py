@@ -1,10 +1,11 @@
 # T15 — Robot fleet status for the staff dashboard.
 from flask import Blueprint, jsonify
+from sqlalchemy.exc import IntegrityError
 
-from .auth import staff_required
+from .auth import manager_required, staff_required
 from ..extensions import db
-from ..models import Robot
-from ..robot import Robot as Fleet, rebalance_reserve
+from ..models import Robot, Trip
+from ..robot import IN_DEPOT, OFFLINE, Robot as Fleet, next_robot_code, rebalance_reserve
 from ..timeutil import iso_utc
 
 bp = Blueprint("robots", __name__, url_prefix="/api/robots")
@@ -58,3 +59,40 @@ def bring_online(robot_id):
         return error
     rebalance_reserve()
     return jsonify(_view(db.session.get(Robot, robot_id)))
+
+
+# ---- adding and removing Robots (Managers): a new Robot starts parked at the store ----
+
+@bp.post("")
+@manager_required
+def add_robot():
+    for _ in range(3):  # two Managers adding at once can pick the same code: the unique index refuses one
+        try:
+            robot = Fleet.create(next_robot_code())
+            db.session.commit()
+            break
+        except IntegrityError:
+            db.session.rollback()
+    else:
+        return jsonify(error="conflict", message="Couldn't add a Robot right now. Try again."), 409
+    rebalance_reserve()  # a second Robot in the depot releases the reserve
+    return jsonify(_view(db.session.get(Robot, robot.model.id))), 201
+
+
+@bp.delete("/<int:robot_id>")
+@manager_required
+def remove_robot(robot_id):
+    """Take a Robot out of the fleet for good. Only from the depot (or offline), never while on a Trip.
+    Its past Trips keep their history but no longer point at it."""
+    robot = db.session.get(Robot, robot_id)
+    if robot is None:
+        return jsonify(error="not_found", message="Robot not found."), 404
+    if robot.status not in (*IN_DEPOT, OFFLINE):
+        return jsonify(error="invalid_transition",
+                       message=f"{robot.robot_code} is {robot.status.replace('_', ' ')}. Wait until it's back at the store."), 409
+    Trip.query.filter_by(robot_id=robot_id).update({"robot_id": None})
+    code = robot.robot_code
+    db.session.delete(robot)
+    db.session.commit()
+    rebalance_reserve()  # the depot may now have a single Robot left
+    return jsonify(removed=code)

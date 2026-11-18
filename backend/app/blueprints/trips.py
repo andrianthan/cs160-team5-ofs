@@ -106,3 +106,23 @@ def dispatch_trip(trip_id):
     fleet.launch(trip.id)
     db.session.refresh(trip)
     return jsonify(_view(trip, now))
+
+
+@bp.post("/<int:trip_id>/advance")
+@staff_required
+def advance_trip(trip_id):
+    """Dispatch page "Next stop": move the Robot on by hand (deliver the next stop, or return to the store)."""
+    trip = db.session.get(Trip, trip_id)
+    if trip is None:
+        return _error("not_found", "Trip not found.", 404)
+    if trip.status != DISPATCHED:
+        return _error("invalid_transition", f"This trip is {trip.status}, not out for delivery.", 409)
+    try:
+        step, stop = fleet.advance_trip(trip)
+    except ValueError as exc:
+        return _error("invalid_transition", str(exc), 409)
+    db.session.refresh(trip)
+    out = _view(trip, datetime.now(timezone.utc))
+    out["step"] = step
+    out["stopNumber"] = stop.stop_number if stop else None
+    return jsonify(out)

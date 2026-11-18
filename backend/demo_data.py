@@ -25,6 +25,7 @@ from app.models.order import (
 from app.models.payment import REFUNDED, SUCCEEDED
 from app.models.trip import COMPLETED, DISPATCHED, OPEN, READY
 from app.planning import distance_km
+from app.robot import robot_code
 
 # (email, name, role, password). The first customer owns the saved cart and most of the live orders.
 DEMO_USERS = [
@@ -286,15 +287,15 @@ def build_history(now=None):
                 formatted_address=f"{line1}, San Jose, CA {postal}", latitude=lat, longitude=lng,
                 in_delivery_zone=True, is_default=True))
 
-    # The fleet: seed_demo.py creates ROBOT-01..03 parked at the store. Past trips are spread across
-    # the first two; ROBOT-01 is also the one out on the live trip below.
+    # The fleet: seed_demo.py creates OFS-R1..R3 parked at the store. Past trips are spread across
+    # the first two; OFS-R1 is also the one out on the live trip below.
     fleet = {}
-    for code in ("ROBOT-01", "ROBOT-02", "ROBOT-03"):
+    for code in (robot_code(1), robot_code(2), robot_code(3)):
         fleet[code] = Robot.query.filter_by(robot_code=code).first() or Robot(robot_code=code)
         fleet[code].status = "available"
         fleet[code].current_latitude, fleet[code].current_longitude = STORE
         db.session.add(fleet[code])
-    robot1, robot2 = fleet["ROBOT-01"], fleet["ROBOT-02"]
+    robot1, robot2 = fleet[robot_code(1)], fleet[robot_code(2)]
 
     # --- history: delivered orders in clusters of 1-3 per delivery window, two or three a day ---
     delivered = []
@@ -336,7 +337,7 @@ def build_history(now=None):
     c = h.customers
     cases = h._basket
 
-    # Out for delivery on ROBOT-01, a few minutes into its run.
+    # Out for delivery on OFS-R1, a few minutes into its run.
     out = [h.make_order(c[0], now - timedelta(minutes=52), cases(), OUT_FOR_DELIVERY, address_index=0),
            h.make_order(c[1], now - timedelta(minutes=48), cases(), OUT_FOR_DELIVERY, address_index=2)]
     route = h._route(out)

@@ -1,0 +1,28 @@
+# Override: run against a private PostgreSQL container instead of the shared Supabase project.
+# Safe for seeding and for trying things out. Data lives in the "ofs_pgdata" volume.
+#   docker compose -f docker-compose.yml -f docker-compose.localdb.yml up --build
+#   docker compose -f docker-compose.yml -f docker-compose.localdb.yml run --rm backend flask --app app:create_app db upgrade
+#   docker compose -f docker-compose.yml -f docker-compose.localdb.yml run --rm backend python seed_demo.py
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ofs
+      POSTGRES_PASSWORD: ofs
+      POSTGRES_DB: ofs_dev
+    volumes: ["ofs_pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ofs -d ofs_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    environment:
+      DATABASE_URL: postgresql://ofs:ofs@db:5432/ofs_dev
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  ofs_pgdata:

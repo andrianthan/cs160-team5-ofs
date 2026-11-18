@@ -12,7 +12,7 @@ Self-driving Robots carry up to 10 Orders / 200 lb per Trip.
 - **Payments:** Stripe (test mode)
 - **Auth:** Flask-Login, session-based
 
-Not yet set up, but in the Part I HLD: Apache (deployment reverse proxy), Vitest (frontend tests).
+Apache (deployment reverse proxy) is set up in the Docker config (see Docker Setup). Not yet set up, but in the Part I HLD: Vitest (frontend tests).
 
 ## Team Roles (Part I)
 
@@ -49,121 +49,175 @@ task — e.g. `app/blueprints/cart.py` says `T08, Than Andrian`. Check
 
 ## Setup
 
-Step by step, from a fresh machine to the app running locally. Commands are for macOS/Linux
-(bash/zsh); Windows notes are inline.
+Two ways to run the project. **Docker** needs only Docker; **local development** needs Python and
+Node and reloads on every change. Commands are for macOS/Linux; Windows notes are inline.
 
-### 1. Install the tools
+### Docker (quickest)
 
-| Tool | Version | Check with |
+Runs the Flask API (gunicorn) and both React apps (Apache, with `/api` proxied to the API) in
+containers. You need Docker with Compose v2. Storefront: http://localhost:8080. Staff dashboard:
+http://localhost:8081.
+
+**Quick start: private database with demo data, no accounts needed** (use this to try or test it):
+```
+AUTO_SEED=1 docker compose -f docker-compose.yml -f docker-compose.localdb.yml up -d --build
+```
+PowerShell: `$env:AUTO_SEED=1; docker compose -f docker-compose.yml -f docker-compose.localdb.yml up -d --build`.
+When `docker compose ps` shows the backend as healthy (under a minute), open the URLs above and log in
+(see [Log in](#log-in)). This starts its own PostgreSQL container, creates the tables and loads the
+demo data:
+
+- 38 products in 6 categories (one low-stock, one out-of-stock, one inactive). `Spring Water (case
+  of 24)` weighs 26 lb: one case triggers the $10 fee and 8 cases (208 lb) are blocked (Scenario 3).
+- About 80 orders over the last 14 days in every status, with payments, trips, three Robots, a
+  Manager cancel with a reason and stock edits, so the reports have numbers.
+- Live state: new orders in the prep queue, a trip ready to dispatch, and a trip out for delivery
+  with a Robot partway along its route (so the Track page has something to show).
+
+`AUTO_SEED` is **off by default**: without it nothing is created. It is safe to leave on (it only adds
+what is missing, and loads order history only into a database with no orders) and it **refuses to run
+against the shared Supabase database**.
+
+**Reset to a clean slate** (deletes every table and all data in the private database, then seeds again;
+the stack can stay running):
+```
+docker compose -f docker-compose.yml -f docker-compose.localdb.yml run --rm backend python seed_demo.py --reset
+```
+`--reset` only works on the local database (Docker or a SQLite file) and always refuses Supabase.
+Without Docker: `cd backend && python seed_demo.py --reset`. To delete the database volume instead, add
+`down -v` to the same compose command.
+
+**Checkout and the address map need keys** (everything else works without them). Put the server keys
+in `backend/.env` (copy `backend/.env.example`, see [Backend settings](#backend-settings)) and the two
+public browser keys in a root `.env` (copy `.env.example`):
+```
+VITE_STRIPE_PUBLISHABLE_KEY=pk_test_...
+VITE_MAPBOX_TOKEN=pk....
+```
+The `VITE_*` values are baked into the storefront at **build** time and blank values fail silently, so
+after changing them run `docker compose build storefront`. After changing `backend/.env` run
+`docker compose up -d --force-recreate backend`.
+
+**With the team's Supabase database:** put its connection string in `backend/.env` (see
+[Database](#database)), then start everything, with or without the Stripe forwarder:
+```
+docker compose up -d --build                        # backend + both apps
+docker compose --profile stripe up -d --build       # the same, plus the Stripe webhook forwarder
+```
+There is no `AUTO_SEED` here: the shared database already has its data, and `AUTO_SEED=1` refuses to
+run against it. Seeding it would add the demo products and customers to the team's real data; if
+that is really what you want, run `docker compose run --rm backend python seed_demo.py` by hand
+(order history is only added to a database with no orders). Stop with
+`docker compose --profile stripe down`.
+
+**Stripe webhooks** (an order is only created when Stripe's webhook arrives): add the optional
+`stripe` service, which uses `STRIPE_SECRET_KEY` from `backend/.env`:
+```
+# Supabase:
+docker compose --profile stripe up -d --build
+# Private database with demo data (all in one):
+AUTO_SEED=1 docker compose -f docker-compose.yml -f docker-compose.localdb.yml --profile stripe up -d --build
+docker compose logs stripe          # prints "Your webhook signing secret is whsec_..." (add the same -f flags)
+```
+Put that `whsec_...` in `backend/.env` as `STRIPE_WEBHOOK_SECRET` (once; it stays the same), then
+`docker compose up -d --force-recreate backend`. Test with the checkout page and card
+`4242 4242 4242 4242`; `stripe trigger` fails on the newest Stripe API version.
+
+**Which Stripe webhook option should I use?**
+
+| You are running | Use | Notes |
 |---|---|---|
-| [Git](https://git-scm.com/downloads) | any recent | `git --version` |
-| [Python](https://www.python.org/downloads/) | 3.12 or newer (the team uses 3.14) | `python3 --version` |
-| [Node.js](https://nodejs.org/) (includes npm) | 22 LTS | `node --version` |
-| [Stripe CLI](https://github.com/stripe/stripe-cli/releases) | optional, for payment webhooks | `stripe --version` |
+| In Docker | the `stripe` service above | Starts with the stack, needs no Stripe CLI install, and authenticates with `STRIPE_SECRET_KEY`, so there is no login to expire. The signing secret stays the same across restarts |
+| Locally without Docker (macOS) | `cd backend && ./start_stripe_listener.sh` | Starts the Stripe CLI on your machine, and writes the new signing secret into `backend/.env`. It forwards to port 5001 by default (`PORT=5000 ./start_stripe_listener.sh` for 5000), needs `stripe login` first (that login expires about daily), and uses macOS `sed`, so on Linux run `stripe listen` yourself (see Local development) |
+| A real, public deployment | a webhook endpoint created in the Stripe Dashboard | Point it at `https://<your-site>/api/payments/webhook` and put its `whsec_...` in the server's `STRIPE_WEBHOOK_SECRET`. No CLI runs next to the backend. Neither option above is meant for this |
 
-### 2. Clone the repository
+**Docker troubleshooting.** Run `docker compose logs --tail 40 backend` and read the last error.
 
+| Symptom | Cause and fix |
+|---|---|
+| "Could not load products" but the backend is healthy | The database is unreachable; see the next rows |
+| `Network is unreachable`, host `db.<ref>.supabase.co` | The Direct address is IPv6-only and Docker has no IPv6. Use the **Session pooler** string |
+| `connection to server at "localhost" ... refused` | `DATABASE_URL` isn't being read. Check the name is spelled exactly `DATABASE_URL` (a typo like `DATABASE_UR` is silently ignored) |
+| `Tenant or user not found` / `password authentication failed` | Wrong region or `postgres.<ref>` user (copy the string again), or brackets or a space in the password |
+| `AUTO_SEED refused` | `DATABASE_URL` points at a non-local database. Use the local database override, or seed by hand |
+| Checkout form or address map blank | `VITE_*` keys were blank at build time; fill the root `.env` and rebuild the storefront |
+
+### Local development
+
+**1. Install:** [Git](https://git-scm.com/downloads), [Python](https://www.python.org/downloads/) 3.12+
+(the team uses 3.14), [Node.js](https://nodejs.org/) 22 LTS, and optionally the
+[Stripe CLI](https://github.com/stripe/stripe-cli/releases).
+
+**2. Clone and install the backend:**
 ```
-git clone https://github.com/andrianthan/cs160-team5-ofs.git
-cd cs160-team5-ofs
-```
-
-### 3. Backend: Python environment
-
-```
+git clone https://github.com/andrianthan/cs160-team5-ofs.git && cd cs160-team5-ofs
 cd backend
-python3 -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
+python3 -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+cp .env.example .env                                   # then fill it in (next section)
 ```
+Activate the venv in every new backend terminal. (SQLAlchemy is pinned to 2.0.x because 2.1 looks
+for the `psycopg` driver instead of our `psycopg2`.)
 
-Activate the venv (`source .venv/bin/activate`) in every new terminal you use for the backend.
-SQLAlchemy is pinned to 2.0.x because 2.1 looks for the `psycopg` driver instead of our `psycopg2`.
+#### Backend settings
 
-### 4. Backend: secrets and settings (`backend/.env`)
-
-```
-cp .env.example .env
-```
-
-Then fill in `backend/.env`. It's gitignored: never commit it or paste its contents anywhere.
+`backend/.env` is gitignored: never commit it or paste its contents anywhere.
 
 | Setting | Needed for | Where to get it |
 |---|---|---|
-| `DATABASE_URL` | everything | step 5 |
+| `DATABASE_URL` | everything | the next section |
 | `SECRET_KEY` | login sessions | any long random string |
 | `STRIPE_SECRET_KEY` | checkout | [Stripe dashboard](https://dashboard.stripe.com) (test mode) → Developers → API keys → `sk_test_...` |
-| `STRIPE_WEBHOOK_SECRET` | payment webhooks (optional) | `stripe listen --print-secret` (step 7) |
-| `MAPBOX_ACCESS_TOKEN` | address validation at checkout | [Mapbox account](https://account.mapbox.com) → Access tokens → default public token `pk....` |
+| `STRIPE_WEBHOOK_SECRET` | payment webhooks (optional) | `stripe listen --print-secret` |
+| `MAPBOX_ACCESS_TOKEN` | address validation | [Mapbox](https://account.mapbox.com) → Access tokens → default public token `pk....` |
 | `SMTP_*` | order emails (optional) | without `SMTP_HOST`, emails are skipped and recorded as `skipped` |
 
-### 5. Database: pick one
+#### Database
 
-**A. The team's shared Supabase database (normal setup).** The project owner sends you the
-connection string privately. In the Supabase dashboard it's under
-**Connect → Connection string → Method: Session pooler**:
+**A. The team's shared Supabase database (normal setup).** In the Supabase dashboard click
+**Connect → Direct → Connection String** and set **Method** to **Session pooler** (not "Direct
+connection" or "Transaction pooler"). The string looks like
+`postgresql://postgres.[PROJECT-REF]:[YOUR-PASSWORD]@aws-0-[REGION].pooler.supabase.com:5432/postgres`.
+Replace `[YOUR-PASSWORD]` with the password (no brackets), add `?sslmode=require`, and put it in
+`backend/.env`:
 ```
 DATABASE_URL=postgresql://postgres.[PROJECT-REF]:[DB-PASSWORD]@aws-0-[REGION].pooler.supabase.com:5432/postgres?sslmode=require
 ```
-Use the **Session pooler**, not "Direct connection" (the direct `db.[PROJECT-REF].supabase.co`
-address needs IPv6, which many networks lack). `?sslmode=require` encrypts the connection.
-The tables and demo data already exist there: **don't run the seed** against the shared database.
+Don't use the Direct address (`db.[PROJECT-REF].supabase.co`): it needs IPv6, which many networks and
+Docker lack. The tables and demo data already exist there: **don't run the seed** against it. Every
+table has row-level security on, so Supabase's public key can read nothing; the backend connects as the
+tables' owner and is unaffected. Project owner: use a letters-and-digits password (`@ # / %` break the
+URL) and run `flask --app app:create_app db upgrade` once after any PR with a new migration merges.
 
-Every table has row-level security on (migration `0003_enable_rls`), so Supabase's public API key
-can't read or change anything; the backend connects as the tables' owner and isn't affected.
-Project owner: give the database a letters-and-digits password (`@ # / %` break the URL), and run
-`flask --app app:create_app db upgrade` once after any PR with a new migration merges.
+**B. A private local database (offline, your own data).** Set `DATABASE_URL=sqlite:///demo.db`, then
+`python seed_demo.py` (creates `backend/instance/demo.db` with the same demo data as Docker). To start
+over, run `python seed_demo.py --reset`.
 
-**B. A private local database (works offline, your own data).** Set
+**3. Frontend:** from the repo root run `npm install` (one install covers both apps and the shared
+package). The storefront also needs two **public** keys in `frontend/storefront/.env` (gitignored;
+restart Vite after changing it):
 ```
-DATABASE_URL=sqlite:///demo.db
+VITE_STRIPE_PUBLISHABLE_KEY=pk_test_...
+VITE_MAPBOX_TOKEN=pk....
 ```
-then create the tables and demo data (the file lands in `backend/instance/demo.db`):
-```
-python seed_demo.py              # reads backend/.env and prints which database it's seeding
-```
-To start over, delete `backend/instance/demo.db` and run the seed again.
 
-### 6. Frontend: install and keys
-
-From the **repository root** (not `backend/`):
-```
-cd ..                            # back to cs160-team5-ofs/
-npm install
-```
-One install covers both apps and the shared package (npm workspaces).
-
-The storefront also needs two **public** keys in `frontend/storefront/.env` (gitignored):
-```
-VITE_STRIPE_PUBLISHABLE_KEY=pk_test_...   # Stripe → Developers → API keys → publishable key
-VITE_MAPBOX_TOKEN=pk....                  # same Mapbox public token as above
-```
-Restart the storefront after changing it; Vite only reads `.env` on start.
-
-### 7. Run it
-
-Use a separate terminal for each:
+**4. Run it**, one terminal each:
 
 | Terminal | Command | Opens |
 |---|---|---|
-| Backend | `cd backend && source .venv/bin/activate && python run.py` | http://localhost:5000/api/health → `{"status":"ok"}` |
+| Backend | `cd backend && source .venv/bin/activate && python run.py` | http://localhost:5000/api/health |
 | Storefront | `npm run dev:storefront` (repo root) | http://localhost:5173 |
 | Staff dashboard | `npm run dev:staff` (repo root) | http://localhost:5174 |
-| Stripe (optional) | see below | |
 
-Both frontend apps forward `/api/*` to the backend on `localhost:5000` (see each
-`vite.config.ts`), so there are no CORS issues locally.
-
-**Stripe webhooks (optional).** The checkout page also polls Stripe, so orders get placed without
-this. Run it to test webhook delivery, failed payments and cancellations:
+Both apps forward `/api/*` to the backend on port 5000, so there are no CORS issues. Optional Stripe
+webhooks (checkout also polls Stripe, so orders get placed without them):
 ```
 stripe login
-stripe listen --print-secret   # put this whsec_... in STRIPE_WEBHOOK_SECRET (it's per machine)
 stripe listen --events payment_intent.succeeded,payment_intent.payment_failed,payment_intent.canceled \
-  --forward-to localhost:5000/api/payments/webhook
+  --forward-to localhost:5000/api/payments/webhook      # put the printed whsec_... in STRIPE_WEBHOOK_SECRET
 ```
 
-### 8. Log in
+### Log in
 
 | Role | Email | Password | Use it in |
 |---|---|---|---|
@@ -171,54 +225,34 @@ stripe listen --events payment_intent.succeeded,payment_intent.payment_failed,pa
 | Employee | `employee@example.com` | `employee123` | Staff dashboard |
 | Manager | `manager@example.com` | `manager123` | Staff dashboard (includes Reports) |
 
-Test card: `4242 4242 4242 4242`, any future expiry, any CVC. Test addresses must be inside the
-Downtown San Jose delivery zone (e.g. `150 S 1st St, San Jose`).
+The demo data also has customers `dana@`, `sam@`, `priya@`, `leo@` and `mia@example.com` (all
+`customer123`). Test card: `4242 4242 4242 4242`, any future expiry, any CVC. Test addresses must be
+inside the Downtown San Jose delivery zone (e.g. `200 E Santa Clara St, San Jose`).
 
-### 9. Run the checks
+### Checks and keeping up to date
 
 ```
-cd backend && pytest             # backend tests (in-memory database; never touches yours)
-npm run typecheck                # repo root: type-check all frontend workspaces
-npm run lint
-npm run build
+cd backend && pytest        # backend tests (in-memory database; never touches yours)
+npm run typecheck && npm run lint && npm run build        # repo root
 ```
+After `git pull`: `pip install -r requirements.txt` if it changed, `npm install` if
+`package-lock.json` changed. If the pull added a migration (a new file in `backend/migrations/versions/`):
+run `flask --app app:create_app db upgrade` on a local database; on the shared Supabase database the
+project owner does it once and nobody else does.
 
-### Keeping up to date
+### Troubleshooting (local development)
 
-After `git pull`:
-```
-cd backend && source .venv/bin/activate
-pip install -r requirements.txt  # if requirements.txt changed
-cd .. && npm install             # if package-lock.json changed
-```
-If the pull added a migration (a new file in `backend/migrations/versions/`):
-- **Local database:** `cd backend && flask --app app:create_app db upgrade`, or delete
-  `backend/instance/demo.db` and re-seed.
-- **Shared Supabase database:** the project owner runs `db upgrade` once after the merge; nobody
-  else does.
-
-### Troubleshooting
-
-- *My changes don't show up in Supabase.* Check the ` * Database: ...` line `python run.py` prints on
-  start (password hidden). A `DATABASE_URL` set in your terminal (e.g. from
-  `export DATABASE_URL=...`) overrides `backend/.env`. Run `unset DATABASE_URL` or open a new
-  terminal, then restart the backend.
-- *"table ... already exists" or "was created before migrations existed" when seeding.* The
-  database file is from before migrations. Delete `backend/instance/demo.db` and seed again.
-- *Port 5000 is taken (macOS).* macOS uses it for AirPlay Receiver (System Settings → General →
-  AirDrop & Handoff → AirPlay Receiver). Either turn that off, or run on another port: start the
-  backend with `PORT=5001 python run.py`, and each frontend with
-  `API_URL=http://localhost:5001 npm run dev:staff` (or `dev:storefront`). If you use Stripe,
-  change the `--forward-to` port too.
-- *Vite fails with "Cannot find native binding" / `@tailwindcss/oxide-darwin-arm64` (macOS).* The
-  lockfile only lists the Linux binaries (an npm optional-dependency bug). Run
+- *Changes don't show up in Supabase.* Check the ` * Database: ...` line `python run.py` prints. A
+  `DATABASE_URL` exported in your terminal overrides `backend/.env`: run `unset DATABASE_URL` and restart.
+- *"table ... already exists" when seeding.* The SQLite file predates migrations: delete
+  `backend/instance/demo.db` and seed again.
+- *Port 5000 is taken (macOS AirPlay Receiver).* Turn that off, or start the backend with
+  `PORT=5001 python run.py` and each frontend with `API_URL=http://localhost:5001 npm run dev:staff`
+  (or `dev:storefront`); change the Stripe `--forward-to` port too.
+- *Vite: "Cannot find native binding" / `@tailwindcss/oxide-darwin-arm64` (macOS).* The lockfile
+  lists only the Linux binaries. Run
   `npm install --no-save @tailwindcss/oxide-darwin-arm64@4.3.3 -w staff-dashboard -w storefront`
-  (use `oxide-darwin-x64` on Intel Macs). `--no-save` keeps `package-lock.json` unchanged.
-
-## Docker Setup
-
-Not set up yet. This section will cover running the whole app (backend, both frontends, and a
-database) with `docker compose up`.
+  (`oxide-darwin-x64` on Intel Macs).
 
 ## Shared Frontend Package
 

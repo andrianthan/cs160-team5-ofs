@@ -1,0 +1,67 @@
+# One command to run the whole site:  docker compose up --build
+#   Storefront      http://localhost:8080
+#   Staff dashboard http://localhost:8081
+# Needs backend/.env (copy backend/.env.example). The database is whatever DATABASE_URL points at
+# (the shared Supabase project). For a private throwaway database instead, add the override:
+#   docker compose -f docker-compose.yml -f docker-compose.localdb.yml up --build
+# The two VITE_* values are baked into the storefront at build time; put them in a root .env file
+# (see .env.example).
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file:
+      - path: backend/.env
+        required: false   # a fresh clone has none: the app starts, but checkout needs the keys
+    environment:
+      # Off by default. AUTO_SEED=1 docker compose ... up runs migrations + loads the demo data first.
+      # It only works with the bundled database (docker-compose.localdb.yml); it refuses anything else.
+      AUTO_SEED: ${AUTO_SEED:-0}
+    expose: ["5000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:5000/api/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 90s   # leaves room for the migrations and seed when AUTO_SEED=1
+
+  storefront:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        APP: storefront
+        VITE_STRIPE_PUBLISHABLE_KEY: ${VITE_STRIPE_PUBLISHABLE_KEY:-}
+        VITE_MAPBOX_TOKEN: ${VITE_MAPBOX_TOKEN:-}
+    ports: ["8080:80"]
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  staff:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        APP: staff-dashboard
+    ports: ["8081:80"]
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  # Optional: forwards Stripe test-mode webhooks to the backend (what `stripe listen` does by hand).
+  # Not started by default. Run with:  docker compose --profile stripe up -d
+  # Reads STRIPE_SECRET_KEY from backend/.env. Its signing secret (whsec_...) is printed in the logs:
+  #   docker compose logs stripe
+  # and must equal STRIPE_WEBHOOK_SECRET in backend/.env.
+  stripe:
+    image: stripe/stripe-cli:latest
+    profiles: ["stripe"]
+    env_file: backend/.env
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - 'exec stripe listen --api-key "$$STRIPE_SECRET_KEY" --events payment_intent.succeeded,payment_intent.payment_failed,payment_intent.canceled --forward-to http://backend:5000/api/payments/webhook'
+    depends_on:
+      backend:
+        condition: service_healthy

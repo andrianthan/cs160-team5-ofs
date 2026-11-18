@@ -1,16 +1,20 @@
-"""Create the tables (via migrations) plus demo users, products, and a saved customer cart.
+"""Create the tables (via migrations) plus demo data: accounts, a full catalog, a saved customer cart,
+three Robots and two weeks of order history (see demo_data.py).
 
 Uses DATABASE_URL from backend/.env, like run.py does; a DATABASE_URL set in the terminal wins:
     python seed_demo.py                                   # whatever .env points at
     DATABASE_URL=sqlite:///demo.db python seed_demo.py    # one-off local SQLite
+    python seed_demo.py --auto                            # what Docker runs when AUTO_SEED=1
+    python seed_demo.py --reset                           # wipe EVERYTHING, then seed from scratch
+    python seed_demo.py --with-orders                     # accepted for older docs; the history always loads now
 
-Add --with-orders for a week of Orders and completed Trips, so the Reports page has
-on-time rate, delivery duration and trip utilization to show:
-    python seed_demo.py --with-orders
+It is safe to run again: accounts and products are only added when missing, and the order history
+is only written to a database that has no orders yet. --auto additionally refuses to touch any
+database that is not local (the shared Supabase project). --reset deletes every table and all its
+data first; it only ever runs against a local database, with no way to override that.
 """
 import argparse
 import sys
-from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 
@@ -23,138 +27,54 @@ load_dotenv(Path(__file__).resolve().parent / ".env")
 
 from app import create_app  # noqa: E402
 from app.extensions import db  # noqa: E402
-from app.models import Cart, CartLine, Order, OrderLine, Product, Robot, Trip, TripStop, User  # noqa: E402
+from app.models import Cart, CartLine, Product, Robot, User  # noqa: E402
+from demo_data import DEMO_CART, DEMO_PRODUCTS, DEMO_USERS, build_history  # noqa: E402
 
-DEMO_USERS = [
-    ("customer@example.com", "Casey Customer", "customer", "customer123"),
-    ("employee@example.com", "Eli Employee", "employee", "employee123"),
-    ("manager@example.com", "Maya Manager", "manager", "manager123"),
-]
-
-DEMO_PRODUCTS = [
-    ("Organic Gala Apples (3 lb bag)", "Produce", "5.99", "3.00", 40),
-    ("Baby Spinach (5 oz)", "Produce", "3.49", "0.30", 25),
-    ("Russet Potatoes (5 lb bag)", "Produce", "4.49", "5.00", 20),
-    ("Free-Range Eggs (dozen)", "Dairy", "6.49", "1.60", 18),
-    ("Whole Milk (half gallon)", "Dairy", "4.99", "4.30", 4),
-    ("Sourdough Loaf", "Bakery", "5.50", "1.20", 12),
-    ("Rolled Oats (2 lb)", "Pantry", "4.25", "2.00", 50),
-    ("Olive Oil (500 ml)", "Pantry", "11.99", "2.20", 15),
-]
-
-# Product name -> quantity in customer@example.com's saved cart.
-DEMO_CART = {
-    "Organic Gala Apples (3 lb bag)": 1,
-    "Baby Spinach (5 oz)": 2,
-    "Free-Range Eggs (dozen)": 1,
-}
+# Hosts --auto may seed. Anything else (Supabase, a teammate's server) is refused.
+LOCAL_HOSTS = {"db", "localhost", "127.0.0.1", "::1", None}
 
 MIGRATIONS = Path(__file__).resolve().parent / "migrations"
 
-# A week of Orders and the Trips that delivered them, so the Reports page has real
-# on-time rate, delivery duration and trip utilization instead of nulls.
-# product index, quantity, status, days ago, trip index, minutes late vs the ETA
-DEMO_ORDERS = [
-    (0, 3, "delivered", 1, 0, -3),
-    (1, 2, "delivered", 1, 0, 2),
-    (3, 2, "delivered", 2, 1, -1),
-    (2, 4, "delivery_failed", 3, 2, None),
-    (5, 1, "placed", 3, None, None),
-    (6, 5, "cancelled", 3, None, None),
-    (7, 2, "delivered", 6, 3, 5),
-    (4, 1, "delivered", 5, 3, -2),
-]
-
-parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument(
-    "--with-orders",
-    action="store_true",
-    help="also seed a week of Orders and completed Trips, so the Reports page has numbers",
-)
+parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+parser.add_argument("--auto", action="store_true", help="Docker start-up mode: refuses any non-local database")
+parser.add_argument("--reset", action="store_true", help="delete every table and all data first (local databases only)")
+parser.add_argument("--with-orders", action="store_true",
+                    help="kept so older commands still work: the order history is always seeded now")
 args = parser.parse_args()
-
-def seed_orders(customer_id, products, robots):
-    """Seed a week of Orders plus the Trips that delivered them.
-
-    The Trips carry estimated_arrival and arrived_at on their stops, and those are what
-    the Reports page reads for on-time rate and delivery duration. Without them both
-    metrics are null until a live dispatch happens, so a demo that misses the dispatch
-    shows an empty report.
-    """
-    if Order.query.count():
-        print(f"Orders already seeded: {Order.query.count()}")
-        return
-
-    orders = []
-    for pi, qty, status, days_ago, _trip, _late in DEMO_ORDERS:
-        p = products[pi]
-        subtotal = p.price * qty
-        fee = Decimal("10.00") if p.weight_lb * qty >= 20 else Decimal("0")
-        o = Order(
-            user_id=customer_id,
-            status=status,
-            subtotal=subtotal,
-            delivery_fee=fee,
-            total=subtotal + fee,
-            weight_lb=p.weight_lb * qty,
-            delivery_address="200 East Santa Clara Street, San Jose",
-            delivery_lat=37.3377,
-            delivery_lng=-121.8858,
-            created_at=datetime.now(timezone.utc) - timedelta(days=days_ago),
-        )
-        o.lines.append(OrderLine(product_id=p.product_id, name=p.name, unit_price=p.price,
-                                  weight_lb=p.weight_lb, quantity=qty))
-        db.session.add(o)
-        orders.append(o)
-    db.session.flush()
-
-    trips, stop_numbers = {}, {}
-    for idx, (_pi, _qty, status, _days, trip_idx, late) in enumerate(DEMO_ORDERS):
-        if trip_idx is None:
-            continue
-        o = orders[idx]
-        trip = trips.get(trip_idx)
-        if trip is None:
-            dispatched = o.created_at + timedelta(minutes=2)
-            trip = Trip(
-                status="completed",
-                created_at=o.created_at,
-                dispatched_at=dispatched,
-                completed_at=dispatched + timedelta(minutes=35),
-                estimated_duration_minutes=18,
-                robot_id=robots[trip_idx % len(robots)].id if robots else None,
-            )
-            db.session.add(trip)
-            db.session.flush()
-            trips[trip_idx] = trip
-            stop_numbers[trip_idx] = 0
-        o.trip_id = trip.id
-
-        stop_numbers[trip_idx] += 1
-        stop = TripStop(
-            trip_id=trip.id,
-            order_id=o.id,
-            stop_number=stop_numbers[trip_idx],
-            latitude=37.3377,
-            longitude=-121.8858,
-            estimated_arrival=o.created_at + timedelta(minutes=14),
-        )
-        if status == "delivered":
-            stop.arrived_at = stop.estimated_arrival + timedelta(minutes=late)
-            stop.completed_at = stop.arrived_at + timedelta(minutes=1)
-            stop.status = "delivered"
-        else:
-            stop.status = "delivery_failed"
-            stop.failure_reason = "Nobody was home to take the delivery."
-        db.session.add(stop)
-
-    db.session.commit()
-    print(f"Seeded {Order.query.count()} Orders across {Trip.query.count()} Trips.")
-
+AUTO, RESET = args.auto, args.reset
 
 app = create_app()
+_url = sa.engine.make_url(app.config["SQLALCHEMY_DATABASE_URI"])
+_is_local = _url.get_backend_name() == "sqlite" or _url.host in LOCAL_HOSTS
+if RESET and not _is_local:
+    sys.exit(
+        f"--reset refused: {_url.host} is not a local database, and a reset deletes everything in it.\n"
+        "Reset only works on the bundled Docker database or a local SQLite file."
+    )
+if AUTO and not _is_local:
+    sys.exit(
+        f"AUTO_SEED refused: {_url.host} is not a local database. Automatic seeding only runs against\n"
+        "the bundled database container. To seed this one on purpose, run: python seed_demo.py"
+    )
 print(f"Seeding {sa.engine.make_url(app.config['SQLALCHEMY_DATABASE_URI']).render_as_string(hide_password=True)}")
+
+def wipe_database():
+    """Delete every table and all data, including the migration history, so upgrade() starts clean."""
+    if db.engine.dialect.name == "postgresql":
+        with db.engine.begin() as conn:
+            conn.execute(sa.text("DROP SCHEMA public CASCADE"))
+            conn.execute(sa.text("CREATE SCHEMA public"))
+    else:
+        meta = sa.MetaData()
+        meta.reflect(bind=db.engine)
+        meta.drop_all(bind=db.engine)
+    db.session.remove()
+
+
 with app.app_context():
+    if RESET:
+        print("Resetting: deleting every table and all data first")
+        wipe_database()
     # Build the schema through the migrations, not db.create_all(): that leaves the database
     # versioned (alembic_version), so a later `flask db upgrade` applies only what's new.
     tables = set(sa.inspect(db.engine).get_table_names())
@@ -176,7 +96,7 @@ with app.app_context():
             db.session.add(user)
         users[email] = user
 
-    for name, category, price, weight_lb, stock_qty in DEMO_PRODUCTS:
+    for name, category, price, weight_lb, stock_qty, threshold, active in DEMO_PRODUCTS:
         product = Product.query.filter_by(name=name).first()
         if product is None:
             db.session.add(
@@ -186,15 +106,10 @@ with app.app_context():
                     price=Decimal(price),
                     weight_lb=Decimal(weight_lb),
                     stock_qty=stock_qty,
+                    low_stock_threshold=threshold,
+                    active=active,
                 )
             )
-
-    for n in range(1, 4):  # the demo fleet, parked at the store
-        code = f"ROBOT-{n:02d}"
-        if Robot.query.filter_by(robot_code=code).first() is None:
-            db.session.add(Robot(robot_code=code, status="available",
-                                 current_latitude=app.config["STORE_LAT"],
-                                 current_longitude=app.config["STORE_LNG"]))
 
     db.session.commit()
 
@@ -220,7 +135,16 @@ with app.app_context():
             )
         )
 
+    for n in range(1, 4):  # the demo fleet, parked at the store (the Robot simulator uses these codes)
+        code = f"ROBOT-{n:02d}"
+        if Robot.query.filter_by(robot_code=code).first() is None:
+            db.session.add(Robot(robot_code=code, status="available",
+                                 current_latitude=app.config["STORE_LAT"],
+                                 current_longitude=app.config["STORE_LNG"]))
+
     db.session.commit()
+
+    print(f"Order history: {build_history()}")
 
     print("Demo accounts (email / password):")
     for email, _, role, password in DEMO_USERS:
@@ -229,7 +153,3 @@ with app.app_context():
         f"Created {len(DEMO_CART)} cart products for customer@example.com "
         f"(cart id {cart.id})."
     )
-
-    if args.with_orders:
-        seed_orders(customer.id, Product.query.order_by(Product.product_id).all(),
-                    Robot.query.order_by(Robot.robot_code).all())

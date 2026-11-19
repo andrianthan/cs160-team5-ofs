@@ -1,18 +1,22 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { useAuth } from "@ofs/shared";
 
 import {
+    addRobot,
+    advanceTrip,
     dispatchTrip,
     getDeliveryPause,
     listRobots,
     listTrips,
+    removeRobot,
     setDeliveryPause,
     setRobotOnline,
     type DispatchTrip,
     type Robot,
     type RobotStatus,
 } from "../api/dispatch";
+import StreetMap from "../components/StreetMap";
 
 const FAST_MS = 3_000; // a Robot is out: show it moving
 const SLOW_MS = 15_000;
@@ -40,85 +44,6 @@ function clock(iso: string | null): string {
     return iso ? new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "—";
 }
 
-// ---- schematic map: no tiles, just the stops, routes and Robots scaled to fit ----
-const W = 640, H = 360, PAD = 40;
-
-function RouteMap({ trips, robots }: { trips: DispatchTrip[]; robots: Robot[] }) {
-    const points = useMemo(() => {
-        const pts: [number, number][] = []; // [lng, lat]
-        for (const t of trips) {
-            t.orders.forEach((o) => pts.push([o.deliveryLng, o.deliveryLat]));
-            t.routeGeometry?.coordinates.forEach((c) => pts.push(c));
-        }
-        robots.forEach((r) => r.lat !== null && r.lng !== null && pts.push([r.lng, r.lat]));
-        return pts;
-    }, [trips, robots]);
-
-    if (points.length === 0) return null;
-
-    // Robots at the same spot (all parked at the store) share one marker and one label.
-    const groups = new Map<string, { key: string; lat: number; lng: number; names: string[]; offline: boolean }>();
-    for (const r of robots) {
-        if (r.lat === null || r.lng === null) continue;
-        const key = `${r.lat.toFixed(4)},${r.lng.toFixed(4)}`;
-        const g = groups.get(key) ?? { key, lat: r.lat, lng: r.lng, names: [], offline: true };
-        g.names.push(r.code);
-        g.offline = g.offline && r.status === "offline";
-        groups.set(key, g);
-    }
-    const parked = [...groups.values()].map((g) => ({ ...g, label: g.names.length > 2 ? `${g.names.length} robots` : g.names.join(", ") }));
-
-    const lats = points.map((p) => p[1]);
-    const lngs = points.map((p) => p[0]);
-    const midLat = (Math.min(...lats) + Math.max(...lats)) / 2;
-    const kx = Math.cos((midLat * Math.PI) / 180); // longitude degrees are shorter away from the equator
-    const spanX = Math.max((Math.max(...lngs) - Math.min(...lngs)) * kx, 1e-4);
-    const spanY = Math.max(Math.max(...lats) - Math.min(...lats), 1e-4);
-    const scale = Math.min((W - 2 * PAD) / spanX, (H - 2 * PAD) / spanY);
-    const offX = (W - spanX * scale) / 2;
-    const offY = (H - spanY * scale) / 2;
-    const x = (lng: number) => offX + (lng - Math.min(...lngs)) * kx * scale;
-    const y = (lat: number) => H - offY - (lat - Math.min(...lats)) * scale;
-
-    return (
-        <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Map of delivery stops and Robots" className="w-full bg-white border border-brand-100 rounded-2xl">
-            {trips.map((t) => (
-                <g key={t.id}>
-                    {t.status === "dispatched" && t.routeGeometry && (
-                        <polyline
-                            fill="none"
-                            stroke="var(--color-brand-400)"
-                            strokeWidth="2"
-                            strokeDasharray="5 4"
-                            points={t.routeGeometry.coordinates.map(([lng, lat]) => `${x(lng)},${y(lat)}`).join(" ")}
-                        />
-                    )}
-                    {t.status === "dispatched"
-                        ? t.stops.map((s) => (
-                              <g key={s.orderId}>
-                                  <circle cx={x(s.lng)} cy={y(s.lat)} r="9" fill={s.status === "delivered" ? "var(--color-brand-600)" : "var(--color-gold-300)"} />
-                                  <text x={x(s.lng)} y={y(s.lat) + 4} textAnchor="middle" fontSize="11" fontWeight="600" fill={s.status === "delivered" ? "white" : "var(--color-gold-900)"}>
-                                      {s.number}
-                                  </text>
-                              </g>
-                          ))
-                        : t.orders.map((o) => (
-                              <circle key={o.id} cx={x(o.deliveryLng)} cy={y(o.deliveryLat)} r="5" fill="var(--color-gold-200)" stroke="var(--color-gold-500)" />
-                          ))}
-                </g>
-            ))}
-            {parked.map((group) => (
-                <g key={group.key}>
-                    <rect x={x(group.lng) - 7} y={y(group.lat) - 7} width="14" height="14" rx="3" fill={group.offline ? "#B91C1C" : "var(--color-brand-900)"} />
-                    <text x={x(group.lng) - 11} y={y(group.lat) - 11} textAnchor={x(group.lng) > W / 2 ? "end" : "start"} fontSize="11" fill="var(--color-brand-900)">
-                        {group.label}
-                    </text>
-                </g>
-            ))}
-        </svg>
-    );
-}
-
 export default function DispatchPage() {
     const { user } = useAuth();
     const isManager = user?.role === "manager";
@@ -129,6 +54,7 @@ export default function DispatchPage() {
     const [error, setError] = useState<string | null>(null);
     const [notice, setNotice] = useState<string | null>(null);
     const [busyId, setBusyId] = useState<number | null>(null);
+    const [adding, setAdding] = useState(false);
 
     const refresh = useCallback(async () => {
         const [t, r, p] = await Promise.all([listTrips(), listRobots(), getDeliveryPause()]);
@@ -165,6 +91,22 @@ export default function DispatchPage() {
         await refresh();
     };
 
+    const advance = async (trip: DispatchTrip) => {
+        setBusyId(trip.id);
+        setNotice(null);
+        setError(null);
+        const result = await advanceTrip(trip.id);
+        if (result.ok) {
+            setNotice(
+                result.data.step === "delivered"
+                    ? `Trip #${trip.id}: stop ${result.data.stopNumber} delivered.`
+                    : `Trip #${trip.id} is complete and its Robot is back at the store.`,
+            );
+        } else setError(result.data.message);
+        setBusyId(null);
+        await refresh();
+    };
+
     const togglePause = async () => {
         setNotice(null);
         setError(null);
@@ -180,6 +122,27 @@ export default function DispatchPage() {
         setError(null);
         const result = await setRobotOnline(robot.id, robot.status === "offline");
         if (result.ok) setNotice(`${robot.code} is ${result.data.status === "offline" ? "offline for maintenance" : "back in the depot"}.`);
+        else setError(result.data.message);
+        await refresh();
+    };
+
+    const add = async () => {
+        setAdding(true);
+        setNotice(null);
+        setError(null);
+        const result = await addRobot();
+        if (result.ok) setNotice(`${result.data.code} added. It's parked at the store, ready for the next Trip.`);
+        else setError(result.data.message);
+        await refresh();
+        setAdding(false);
+    };
+
+    const remove = async (robot: Robot) => {
+        if (!window.confirm(`Remove ${robot.code} from the fleet? This can't be undone (you can add a new Robot later).`)) return;
+        setNotice(null);
+        setError(null);
+        const result = await removeRobot(robot.id);
+        if (result.ok) setNotice(`${result.data.removed} removed from the fleet.`);
         else setError(result.data.message);
         await refresh();
     };
@@ -229,9 +192,16 @@ export default function DispatchPage() {
             ) : (
                 <>
                     <section aria-labelledby="fleet">
-                        <h2 id="fleet" className="font-display text-lg font-semibold mb-2">
-                            Robot fleet <span className="text-sm font-normal text-brand-900/50">· {free} of {robots.length} in the depot</span>
-                        </h2>
+                        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                            <h2 id="fleet" className="font-display text-lg font-semibold">
+                                Robot fleet <span className="text-sm font-normal text-brand-900/50">· {free} of {robots.length} in the depot</span>
+                            </h2>
+                            {isManager && (
+                                <button type="button" disabled={adding} onClick={() => void add()} className={`${button} bg-brand-600 text-white hover:bg-brand-700`}>
+                                    + Add robot
+                                </button>
+                            )}
+                        </div>
                         {robots.length === 0 ? (
                             <p className="text-sm text-brand-900/50 border border-dashed border-brand-200 rounded-xl py-6 text-center">No Robots registered.</p>
                         ) : (
@@ -254,6 +224,15 @@ export default function DispatchPage() {
                                                 {r.status === "offline" ? "Back online" : "Take offline"}
                                             </button>
                                         )}
+                                        {isManager && (r.status === "available" || r.status === "reserved" || r.status === "offline") && (
+                                            <button
+                                                type="button"
+                                                onClick={() => void remove(r)}
+                                                className={`${button} mt-2 ml-2 bg-red-50 text-red-700 hover:bg-red-100`}
+                                            >
+                                                Remove
+                                            </button>
+                                        )}
                                     </li>
                                 ))}
                             </ul>
@@ -266,8 +245,8 @@ export default function DispatchPage() {
                             <p className="text-sm text-brand-900/50 border border-dashed border-brand-200 rounded-xl py-6 text-center">Nothing to show yet.</p>
                         ) : (
                             <>
-                                <RouteMap trips={trips} robots={robots} />
-                                <p className="text-xs text-brand-900/50 mt-1">Squares are Robots, numbered circles are stops on a dispatched Trip (green = delivered), small dots are prepared orders waiting.</p>
+                                <StreetMap trips={trips} robots={robots} />
+                                <p className="text-xs text-brand-900/50 mt-1">Dark labels are Robots (red = offline), numbered circles are stops on a dispatched Trip (green = delivered), small dots are prepared orders waiting.</p>
                             </>
                         )}
                     </section>
@@ -309,6 +288,17 @@ export default function DispatchPage() {
                                                         className={`${button} bg-brand-600 text-white hover:bg-brand-700`}
                                                     >
                                                         Dispatch
+                                                    </button>
+                                                )}
+                                                {trip.status === "dispatched" && (
+                                                    <button
+                                                        type="button"
+                                                        disabled={busyId === trip.id || robot?.status === "offline"}
+                                                        title="Skip ahead: the Robot goes straight to its next stop and hands over the order (stops the automatic drive for this Trip)"
+                                                        onClick={() => void advance(trip)}
+                                                        className={`${button} bg-gold-100 text-gold-900 hover:bg-gold-200`}
+                                                    >
+                                                        {done === trip.stops.length || robot?.status === "returning" ? "Return to store" : "Next stop"}
                                                     </button>
                                                 )}
                                             </div>

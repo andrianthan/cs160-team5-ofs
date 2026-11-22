@@ -1,0 +1,70 @@
+# Run the site from the published images: no clone, no build. This file is all you need.
+#   curl -LO https://raw.githubusercontent.com/andrianthan/cs160-team5-ofs/main/docker-compose.ghcr.yml
+#
+# Own database with demo data (nothing else needed):
+#   AUTO_SEED=1 docker compose -f docker-compose.ghcr.yml --profile localdb up -d
+# The team's Supabase database: put a .env file next to this one (same contents as backend/.env in
+# the repo: DATABASE_URL = the Session pooler string, plus STRIPE_* and SMTP_* if you have them), then
+#   docker compose -f docker-compose.ghcr.yml up -d
+#
+# Storefront http://localhost:8080   Staff dashboard http://localhost:8081
+# Newest images: docker compose -f docker-compose.ghcr.yml pull, then the same up command again.
+# A specific build: OFS_TAG=sha-1234567 (any tag listed on the repo's Packages page).
+# The storefront's Stripe/Mapbox keys are baked into its image by .github/workflows/docker-images.yml.
+services:
+  db:
+    image: postgres:16
+    profiles: ["localdb"]
+    environment:
+      POSTGRES_USER: ofs
+      POSTGRES_PASSWORD: ofs
+      POSTGRES_DB: ofs_dev
+    volumes: ["ofs_pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ofs -d ofs_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  backend:
+    image: ghcr.io/andrianthan/cs160-team5-ofs/backend:${OFS_TAG:-latest}
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # DATABASE_URL from .env, or the bundled database when .env has none.
+      DATABASE_URL: ${DATABASE_URL:-postgresql://ofs:ofs@db:5432/ofs_dev}
+      # AUTO_SEED=1 loads the demo data first. It refuses any non-local database (Supabase is safe).
+      AUTO_SEED: ${AUTO_SEED:-0}
+    depends_on:
+      db:
+        condition: service_healthy
+        required: false
+    expose: ["5000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:5000/api/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+    restart: unless-stopped
+
+  storefront:
+    image: ghcr.io/andrianthan/cs160-team5-ofs/storefront:${OFS_TAG:-latest}
+    ports: ["8080:80"]
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  staff:
+    image: ghcr.io/andrianthan/cs160-team5-ofs/staff:${OFS_TAG:-latest}
+    ports: ["8081:80"]
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  ofs_pgdata:

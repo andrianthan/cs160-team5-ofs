@@ -144,6 +144,27 @@ Put that `whsec_...` in `backend/.env` as `STRIPE_WEBHOOK_SECRET` (once; it stay
 | Backend stops answering after the computer sleeps | Its database connections died during sleep. It now drops them and reconnects within about 30 seconds; if yours stays frozen, the image predates that fix: `docker compose up -d --build backend` |
 | Checkout form or address map blank | `VITE_*` keys were blank at build time; fill the root `.env` and rebuild the storefront |
 
+### Docker without cloning (prebuilt images)
+
+Every push to `main` publishes ready-made images to GitHub's container registry
+(`ghcr.io/andrianthan/cs160-team5-ofs/backend`, `/storefront`, `/staff`, for x86 and Apple Silicon),
+built by `.github/workflows/docker-images.yml`. To run them you need only Docker and one file:
+```
+curl -LO https://raw.githubusercontent.com/andrianthan/cs160-team5-ofs/main/docker-compose.ghcr.yml
+AUTO_SEED=1 docker compose -f docker-compose.ghcr.yml --profile localdb up -d   # own database + demo data
+```
+For the team's Supabase database instead, put a `.env` file next to it with the same contents as
+`backend/.env` (see [Database](#database)) and run `docker compose -f docker-compose.ghcr.yml up -d`.
+Get newer images with `docker compose -f docker-compose.ghcr.yml pull`, then the same `up` command.
+Nothing is built locally, so nothing here picks up changes you haven't pushed; use the clone-based
+setup above for that.
+
+**One-time setup (repo owner):** after the first workflow run, open each package from the repo's
+**Packages** list, then **Package settings > Change visibility > Public** (new packages start private,
+so `docker pull` would ask for a login). For a working checkout page and map, set the repository
+**variables** `VITE_STRIPE_PUBLISHABLE_KEY` and `VITE_MAPBOX_TOKEN` (Settings > Secrets and variables >
+Actions > Variables). Both are public browser keys, so baking them into a public image is fine.
+
 ### Local development
 
 **1. Install:** [Git](https://git-scm.com/downloads), [Python](https://www.python.org/downloads/) 3.12+

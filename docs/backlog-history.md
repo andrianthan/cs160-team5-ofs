@@ -54,21 +54,6 @@ Status below comes from reading the code on `origin/main` at `47af856` (PR #20, 
 
 Summary: all 20 done.
 
-History: an earlier version of this table (2026-11-12) had 10 done, 8 partial or mostly done (T01, T05, T12, T13, T16, T18, T19, T20) and 2 not on `main` (T14, T15). The problems found then, and how each was fixed, are below; the per-task history has every commit since.
-
-### Known problems on `main` — as of the 2026-11-12 snapshot
-
-All three were fixed after it:
-
-- ~~The storefront fails `tsc`: `src/App.tsx` imports `./pages/TrackOrdersPage`, which does not exist on `main`.~~ **Fixed** — the tracking page and the robot map are merged (PR #11); `npm run typecheck` passes on all three workspaces.
-- ~~`frontend/staff-dashboard/src/pages/DispatchPage.tsx` is an empty component, and the `/dispatch` route renders a placeholder stub instead.~~ **Fixed** — PR #12 shipped the Dispatch page with the fleet, the live map, trips and dispatch.
-- ~~Stale comment in `reports.py` says there is no `inventory_log` table, but the table exists and is simply never written.~~ **Fixed** — every Stock change writes `inventory_log` in the same transaction (PR #10, branch `shresth/t05-t12-inventory-log-order-history`).
-
-Two more were true on 2026-11-16:
-
-- ~~No Apache or gunicorn deployment config is in the repo yet (T01 is partial for that reason).~~ **Fixed** — `backend/Dockerfile` (gunicorn), `frontend/Dockerfile` and `docker/apache-app.conf` (Apache) and `docker-compose.yml`, merged in PR #17 (`a26ba7c`, 2026-11-15).
-- Deliberate, still true: the customer map and, since PR #18, the staff Dispatch map are Leaflet with OpenStreetMap tiles, not the Mapbox GL JS that the Part I HLD named. Mapbox does the geocoding, the address autofill and the route optimisation.
-
 ## Per-task history
 
 ### T01 Repo and deployment skeleton (assigned: Anuj)
@@ -79,7 +64,6 @@ Two more were true on 2026-11-16:
 - 2026-10-04 Andrian: TypeScript on both frontends. Decided DB hosting (Supabase).
 - 2026-11-02 Kelvin: backend minor fixes (README, requirements, run.py).
 - 2026-11-03 Andrian: dev port made configurable.
-- ~~No Apache or gunicorn config appears in the repo.~~ Added on 2026-11-15, below.
 - 2026-11-15 Kelvin: Docker setup (`a26ba7c`): `backend/Dockerfile` runs the API under gunicorn (one worker, four threads, non-root user); `frontend/Dockerfile` builds either React app and serves it from Apache; `docker/apache-app.conf` proxies `/api` to the backend and falls back to `index.html` for browser routes; `docker-compose.yml` runs all three; `docker-compose.localdb.yml` swaps in a private PostgreSQL. README Supabase connection-string steps and a Docker troubleshooting table (`c6a48cd`). Optional `stripe` service that forwards webhooks (`b5d3857`).
 - 2026-11-16 Kelvin: `AUTO_SEED=1` runs migrations and the demo seed before gunicorn starts, refusing any non-local database; `backend/.env` optional for the containers; `.gitattributes` keeps Docker and Apache files LF on Windows (`a77c834`). README start commands for both databases (`892e96d`).
 - 2026-11-17 Andrian: frontend image builds on arm64 (Apple Silicon); the committed lockfile only had x64 native packages (`5aae6ba`).
@@ -155,7 +139,6 @@ Two more were true on 2026-11-16:
 - 2026-11-02 Kelvin: order creation from paid carts, order routes, tests (`fbe3ccd`).
 - 2026-10-21 Jorge: authorization and validation tests for the override endpoint in `orders.py`.
 - 2026-11-14 Karnani: SALE log on order creation; a cancelled Order's items go back into Stock with a CANCEL log (`e72987c`). Customer order history page `/orders` in the storefront (`bce268d`). Branch `shresth/t05-t12-inventory-log-order-history`, merged in PR #10 on 2026-11-15.
-- The 11/12 snapshot noted that customers can't cancel their own orders. That is by design: cancelling is an Order Override, a Manager action (`CONTEXT.md`), which shipped with T20.
 
 ### T13 Delivery Planning and trip grouping (assigned: Ethan)
 - 2026-10-14 Ethan: T13 with placeholder values in `trips.py`.
@@ -165,12 +148,12 @@ Two more were true on 2026-11-16:
 
 ### T14 Route Optimizer (assigned: Ethan)
 - 2026-11-02 Ethan: "T14 logic with placeholder values/variables" in `trips.py`.
-- Ethan's draft computed nearest-neighbor distances through Mapbox in `trips.py`, but it was overwritten by Kelvin's trip code on 11/4. `main` has no Mapbox Optimization call.
+- Ethan's draft computed nearest-neighbor distances through Mapbox in `trips.py`, but it was overwritten by Kelvin's trip code on 11/4.
 - 2026-11-16 Andrian: the Mapbox Optimization call is now on `main`, in `backend/app/routing.py` (`optimize_route`), written as its own module instead of inside `trips.py`, with a nearest-neighbour fallback when Mapbox is unavailable. Merged in PR #12 (`b6bed4a`); checked live against the Mapbox API on 11/16.
 
 ### T15 Simulated robot fleet (assigned: Ethan)
 - The `robots` table and model arrived with T02 (Anuj, Kelvin).
-- 2026-11-12 Ethan: "partial T15", adds `backend/app/blueprints/robot.py` (`45642d0`). It exists only on `origin/t15-fleet-sim` and is not merged into `main`. Ethan himself moved it to `backend/app/robot.py` on 2026-11-15 (`091e11e`); that file is the one continued below.
+- 2026-11-12 Ethan: "partial T15", adds `backend/app/blueprints/robot.py` (`45642d0`). Ethan moved it to `backend/app/robot.py` on 2026-11-15 (`091e11e`); that file is the one continued below.
 - Jorge's 2026-10-06 commit added robot tracking and ETA to the UI prototype only.
 - 2026-11-15 to 2026-11-16 Ethan: continued `backend/app/robot.py` on `t15-fleet-sim` — "still partial t15" (`091e11e`), "transition logic should be done" (`9e339a3`), "travel simulation logic done i think" (`fd6ed96`), "comments and value changes while i try stuff" (`dbfb681`), "pseuodocode for new robot travel sim" (`eff4348`), "pseudocode for return home" (`cd5d36b`). At `cd5d36b` the file was 255 lines.
 - 2026-11-16 Andrian: **Ethan's `backend/app/robot.py` was rewritten, and the rewrite is what shipped.** `e974248` and `6f52c6a` were committed on top of `t15-fleet-sim`, then merged to `main` as PR #12 (`b6bed4a`) and PR #14 (`6243191`). What changed: the `Robot` class became a thin wrapper over the `robots` row with module-level functions (`pick_robot`, `rebalance_reserve`, `start_trip`, `launch`, `run_trip`); `load_bot()`'s `input()` prompt became the Employee's Dispatch click; `do_trip()`'s stub became a real `run_trip()` that drives every stop and sends the customer delivery email; `reserve_bot()` became `rebalance_reserve()`; `return_home()` became the `last_stop` → `depot_reached` leg. What was kept: the state machine, every state and event name, and the header line "Owner: Notario Ethan Rodriguez". Ethan's commits are not ancestors of `main` (squash-merged), so `git log main` does not show them — his code is in `main`, his commits are not.
@@ -182,10 +165,9 @@ Two more were true on 2026-11-16:
 - 2026-10-21 Jorge: tracking endpoint and tests (committed twice, `b41e579` and `12973de`).
 - 2026-11-10 Jorge: full implementation with live robot map (`0fd6b9e`).
 - 2026-11-12 Jorge: "fully completed manager override and tracking" (`0ccbde0`), now in `main`: tracking endpoint, tests, storefront map dependencies, and an import of `TrackOrdersPage` in the storefront `App.tsx`.
-- ~~The map UI itself (`RobotMap.tsx`, `TrackOrdersPage.tsx`) was only in `0fd6b9e` on `origin/t16-order-tracking` and was never merged. `main` imports a page file that does not exist there, so the storefront will not build until those files are merged.~~ Fixed on 2026-11-15, below.
-- ~~T15 is not merged, so tracking has no real simulated robot positions to consume yet.~~ T15 merged on 2026-11-16 (PR #12); the Track map was watched with a Robot mid-trip that day (`ee2e07e`).
 - 2026-11-14 Kelvin: a trial merge of `main` into the T16 branch, dropping a duplicate `TrackOrdersPage` import (`2acfb92`, `6eb8e1b`, branch `test/t16-merge`). Not merged; it only checked that the two combine.
 - 2026-11-15 Jorge: restored `RobotMap.tsx` and `TrackOrdersPage.tsx` (`0579740`). Both files are byte-for-byte his 11/10 versions from `0fd6b9e`. Merged as PR #11 (`00df99b`).
+- 2026-11-16 Andrian: the Track map watched with a Robot mid-trip, against the running stack (`ee2e07e`).
 
 ### T17 Notifications over SMTP (assigned: Jorge)
 - 2026-11-04 Andrian: SMTP notifications with dedup and retry (`37edee6`).
@@ -200,7 +182,6 @@ Two more were true on 2026-11-16:
 - 2026-11-03 Andrian: reports page (under T19).
 - 2026-11-04 Kelvin: preparation queue page and trip/dispatch endpoints.
 - 2026-11-04 Andrian: Basil branding and UI refresh across both apps.
-- ~~`DispatchPage` is still a stub.~~ Built on 2026-11-16, below.
 - 2026-11-16 Andrian: Dispatch page with the robot fleet, a schematic live map and trips (`6f52c6a`, PR #12). Robot offline/online buttons and the Manager pause toggle (`3855187`, PR #14). Robots parked at one spot share a marker and label (`ad24c21`, PR #15).
 - 2026-11-18 Kelvin: the schematic replaced by a street map, `StreetMap.tsx` with Leaflet and OpenStreetMap (`ef1b65d`). Next stop, Add robot and Remove buttons; map labels HTML-escaped (`8cfd9c8`). Merged as PR #18 (`f9c1151`).
 

@@ -58,32 +58,32 @@ Summary as of the 2026-11-12 snapshot: 10 done (T02, T03, T04, T06, T07, T08, T0
 
 ## Current status (2026-11-22)
 
-Status from reading the code on `origin/main` at `47af856` (PR #20) and running it: backend `pytest` gives 371 passed, 7 skipped; `npm run typecheck` passes on all three workspaces. All 20 tasks are implemented and merged. The last column lists what remains, where something does.
+Status from reading the code on `origin/main` at `47af856` (PR #20) and running it: backend `pytest` gives 371 passed, 7 skipped; `npm run typecheck` passes on all three workspaces. All 20 tasks are implemented and merged.
 
-| ID | Status on `main` | What changed after the 11/12 snapshot (PR) | Still open |
-|---|---|---|---|
-| T01 | Done | Docker: gunicorn backend, Apache for both apps with `/api` proxied, compose file, local-database override, Stripe forwarder, `AUTO_SEED` (#17). Auto-restart and dead-connection recovery (#19). Prebuilt images on GHCR (#20) | — |
-| T02 | Done | Database connections time out instead of hanging after the host sleeps (#19) | — |
-| T03 | Done | `demo_data.py`: 38-product catalog, customers, robots, two weeks of orders in every status with payments, trips and inventory log, with tests; `seed_demo.py --auto` and `--reset`, both local-only (#17) | — |
-| T04 | Done | Sign-up race and over-long names no longer crash (#10) | — |
-| T05 | Done | Every Stock change writes `inventory_log`; `GET /api/products/<id>/inventory-log` (#10) | — |
-| T06 | Done | — | — |
-| T07 | Done | — | — |
-| T08 | Done | — | — |
-| T09 | Done | — | — |
-| T10 | Done | Paid end to end with a real test-mode PaymentIntent and signed webhook (`ee2e07e`); `start_stripe_listener.sh` (`4ce1022`); `stripe` Docker service (#17) | — |
-| T11 | Done | Crash on unusual address input fixed (#10) | — |
-| T12 | Mostly done | Customer order history page `/orders`; SALE and CANCEL inventory log rows; Manager cancel locks the Order (#10) | No customer self-cancel in the storefront |
-| T13 | Done | The route optimizer and robot fleet it fed into now exist (T14, T15, #12) | — |
-| T14 | Done | Mapbox Optimization in `routing.py` with a nearest-neighbour fallback (#12) | — |
-| T15 | Done | Robot fleet simulation (#12), offline/online (#14), Next stop, add and remove robots, `OFS-R` codes (#18) | — |
-| T16 | Done | Track page and robot map merged (#11) | — |
-| T17 | Done | PLAIN AUTH fix, 30 s timeout, `smtp_check.py` (`ee2e07e`); `set_smtp_credentials.py` sends a test email, `SMTP_FROM` defaults to the username (`ea1f5f2`) | Whether a real email reached an inbox is not recorded in the repo |
-| T18 | Done | Dispatch page (#12), robot controls and Manager pause toggle (#14), label fixes (#15), street map and Next stop, add/remove robot buttons (#18) | — |
-| T19 | Done | On-time rate, delivery duration, trip utilization (#16) | Stock adjustment history is API-only (T05); no report page shows it |
-| T20 | Done | Pause toggle on the Dispatch page, checkout notice (#14); Pay disabled while paused (#15); Manager cancel race fixed (#10) | — |
+| ID | Status on `main` | What changed after the 11/12 snapshot (PR) |
+|---|---|---|
+| T01 | Done | Docker: gunicorn backend, Apache for both apps with `/api` proxied, compose file, local-database override, Stripe forwarder, `AUTO_SEED` (#17). Auto-restart and dead-connection recovery (#19). Prebuilt images on GHCR (#20) |
+| T02 | Done | Database connections time out instead of hanging after the host sleeps (#19) |
+| T03 | Done | `demo_data.py`: 38-product catalog, customers, robots, two weeks of orders in every status with payments, trips and inventory log, with tests; `seed_demo.py --auto` and `--reset`, both local-only (#17) |
+| T04 | Done | Sign-up race and over-long names no longer crash (#10) |
+| T05 | Done | Every Stock change writes `inventory_log`; `GET /api/products/<id>/inventory-log` (#10) |
+| T06 | Done | — |
+| T07 | Done | — |
+| T08 | Done | — |
+| T09 | Done | — |
+| T10 | Done | Paid end to end with a real test-mode PaymentIntent and signed webhook (`ee2e07e`); `start_stripe_listener.sh` (`4ce1022`); `stripe` Docker service (#17) |
+| T11 | Done | Crash on unusual address input fixed (#10) |
+| T12 | Done | Customer order history page `/orders`; SALE and CANCEL inventory log rows; Manager cancel locks the Order (#10) |
+| T13 | Done | The route optimizer and robot fleet it fed into now exist (T14, T15, #12) |
+| T14 | Done | Mapbox Optimization in `routing.py` with a nearest-neighbour fallback (#12) |
+| T15 | Done | Robot fleet simulation (#12), offline/online (#14), Next stop, add and remove robots, `OFS-R` codes (#18) |
+| T16 | Done | Track page and robot map merged (#11) |
+| T17 | Done | PLAIN AUTH fix, 30 s timeout, `smtp_check.py` (`ee2e07e`); `set_smtp_credentials.py` sends a test email, `SMTP_FROM` defaults to the username (`ea1f5f2`) |
+| T18 | Done | Dispatch page (#12), robot controls and Manager pause toggle (#14), label fixes (#15), street map and Next stop, add/remove robot buttons (#18) |
+| T19 | Done | On-time rate, delivery duration, trip utilization (#16); Managers read stock adjustment history at `GET /api/products/<id>/inventory-log` (T05, #10) |
+| T20 | Done | Pause toggle on the Dispatch page, checkout notice (#14); Pay disabled while paused (#15); Manager cancel race fixed (#10) |
 
-Summary: 19 done, 1 mostly done (T12). Of the 8 partial and 2 missing tasks at the 11/12 snapshot, T01, T05, T13, T14, T15, T16, T18, T19 and T20 are now done.
+Summary: all 20 done. Every task that was partial or missing at the 11/12 snapshot (T01, T05, T12, T13, T14, T15, T16, T18, T19, T20) is now done.
 
 ### Known problems on `main` — as of the 2026-11-12 snapshot
 
@@ -184,7 +184,7 @@ Two more were true on 2026-11-16:
 - 2026-11-02 Kelvin: order creation from paid carts, order routes, tests (`fbe3ccd`).
 - 2026-10-21 Jorge: authorization and validation tests for the override endpoint in `orders.py`.
 - 2026-11-14 Karnani: SALE log on order creation; a cancelled Order's items go back into Stock with a CANCEL log (`e72987c`). Customer order history page `/orders` in the storefront (`bce268d`). Branch `shresth/t05-t12-inventory-log-order-history`, merged in PR #10 on 2026-11-15.
-- Still not on `main`: a way for a customer to cancel their own order from the storefront.
+- The 11/12 snapshot noted that customers can't cancel their own orders. That is by design: cancelling is an Order Override, a Manager action (`CONTEXT.md`), which shipped with T20.
 
 ### T13 Delivery Planning and trip grouping (assigned: Ethan)
 - 2026-10-14 Ethan: T13 with placeholder values in `trips.py`.
@@ -236,7 +236,7 @@ Two more were true on 2026-11-16:
 ### T19 Manager Reports (assigned: Andrian)
 - 2026-11-03 Andrian: sales, inventory and delivery reports, backend plus reports page, with tests (PR #1).
 - 2026-11-16 Andrian: on-time rate (delivered stops at or before their ETA, out of delivered stops with an ETA), average minutes from order to arrival, and trip utilization (average orders per Trip and fill of the 10-order and 200 lb limits), with tests and the Reports page fields (`5232658`, squash-merged as PR #16, `6edcd06`).
-- Stock adjustment history exists as `GET /api/products/<id>/inventory-log` (T05) but is not shown on the Reports page.
+- Stock adjustment history: every Stock change is logged (T05, PR #10) and Managers read it at `GET /api/products/<id>/inventory-log`.
 
 ### T20 Delivery Pause and Order Override (assigned: Jorge)
 - 2026-10-21 Jorge: override authorization and validation tests.

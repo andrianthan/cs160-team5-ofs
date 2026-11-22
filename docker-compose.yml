@@ -19,6 +19,7 @@ services:
       # It only works with the bundled database (docker-compose.localdb.yml); it refuses anything else.
       AUTO_SEED: ${AUTO_SEED:-0}
     expose: ["5000"]
+    restart: unless-stopped   # come back after a crash or a reboot / Docker restart
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:5000/api/health', timeout=3)"]
       interval: 10s
@@ -27,6 +28,7 @@ services:
       start_period: 90s   # leaves room for the migrations and seed when AUTO_SEED=1
 
   storefront:
+    restart: unless-stopped
     build:
       context: .
       dockerfile: frontend/Dockerfile
@@ -40,6 +42,7 @@ services:
         condition: service_healthy
 
   staff:
+    restart: unless-stopped
     build:
       context: .
       dockerfile: frontend/Dockerfile

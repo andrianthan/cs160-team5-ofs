@@ -26,6 +26,18 @@ class Config:
         # only a few dozen in total, shared by every teammate's backend and the email threads.
         "pool_size": 3,
         "max_overflow": 2,
+        # Make a dead connection fail in seconds instead of hanging. After the laptop sleeps (or
+        # changes Wi-Fi), the pooled sockets to Supabase are dead, but nothing tells this side: a
+        # query, or even pool_pre_ping's test, sits waiting for TCP to give up (~15 min). With
+        # only 4 gunicorn threads, a few polling pages tie them all up and the whole API freezes.
+        "connect_args": {
+            "connect_timeout": 10,         # seconds to open a new connection
+            "keepalives": 1,               # detect a dead idle connection...
+            "keepalives_idle": 30,         # ...after 30s idle,
+            "keepalives_interval": 10,     # probing every 10s,
+            "keepalives_count": 3,         # and giving up after 3 misses
+            "tcp_user_timeout": 30000,     # ms: give up on a sent query nobody acknowledges
+        },
     }
 
     STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY")

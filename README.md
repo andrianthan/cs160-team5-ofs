@@ -108,7 +108,8 @@ There is no `AUTO_SEED` here: the shared database already has its data, and `AUT
 run against it. Seeding it would add the demo products and customers to the team's real data; if
 that is really what you want, run `docker compose run --rm backend python seed_demo.py` by hand
 (order history is only added to a database with no orders). Stop with
-`docker compose --profile stripe down`.
+`docker compose --profile stripe down`. Until you do, the backend and both apps restart on their own
+after a crash, a reboot or a Docker restart (`restart: unless-stopped`).
 
 **Stripe webhooks** (an order is only created when Stripe's webhook arrives): add the optional
 `stripe` service, which uses `STRIPE_SECRET_KEY` from `backend/.env`:
@@ -140,6 +141,7 @@ Put that `whsec_...` in `backend/.env` as `STRIPE_WEBHOOK_SECRET` (once; it stay
 | `connection to server at "localhost" ... refused` | `DATABASE_URL` isn't being read. Check the name is spelled exactly `DATABASE_URL` (a typo like `DATABASE_UR` is silently ignored) |
 | `Tenant or user not found` / `password authentication failed` | Wrong region or `postgres.<ref>` user (copy the string again), or brackets or a space in the password |
 | `AUTO_SEED refused` | `DATABASE_URL` points at a non-local database. Use the local database override, or seed by hand |
+| Backend stops answering after the computer sleeps | Its database connections died during sleep. It now drops them and reconnects within about 30 seconds; if yours stays frozen, the image predates that fix: `docker compose up -d --build backend` |
 | Checkout form or address map blank | `VITE_*` keys were blank at build time; fill the root `.env` and rebuild the storefront |
 
 ### Local development

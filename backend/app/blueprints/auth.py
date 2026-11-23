@@ -1,9 +1,11 @@
 # T04 — Auth and Roles backend. Owner: Karnani Shresthkumar.
 # LLD 1 (docs/part2): hash_password(), create_session(), require_role(...).
+import threading
+import time
 from functools import wraps
 
 from email_validator import EmailNotValidError, validate_email
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 from flask_login import current_user, login_user, logout_user
 from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash
@@ -14,6 +16,7 @@ from ..models.user import CUSTOMER, EMPLOYEE, MANAGER, User
 bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
 MIN_PASSWORD_LENGTH = 8
+MAX_PASSWORD_LENGTH = 128  # scrypt hashes whatever it is given: a 100,000-character password is a cheap way to burn CPU
 MAX_NAME_LENGTH = User.name.type.length
 
 _IMPLIED_ROLES = {
@@ -58,6 +61,34 @@ def _text(data, key):
     value = data.get(key)
     return value.strip() if isinstance(value, str) else ""
 
+# Failed sign-ins per account, in memory (one gunicorn process serves the API). Keyed by email rather than
+# IP because behind the Apache proxy every request arrives from the proxy's address.
+_failures = {}
+_failures_lock = threading.Lock()
+
+
+def _login_wait(email):
+    """Seconds the caller must wait, or 0 when sign-in is allowed."""
+    limit, window = current_app.config["LOGIN_MAX_FAILURES"], current_app.config["LOGIN_FAILURE_WINDOW_S"]
+    now = time.monotonic()
+    with _failures_lock:
+        recent = [t for t in _failures.get(email, []) if now - t < window]
+        _failures[email] = recent
+        if len(recent) >= limit:
+            return max(1, int(window - (now - recent[0])))
+    return 0
+
+
+def _login_failed(email):
+    with _failures_lock:
+        _failures.setdefault(email, []).append(time.monotonic())
+
+
+def _login_ok(email):
+    with _failures_lock:
+        _failures.pop(email, None)
+
+
 @bp.post("/register")
 def register():
     data = _body()
@@ -75,8 +106,8 @@ def register():
     if len(name) > MAX_NAME_LENGTH:
         return _error("invalid_name", f"Name must be at most {MAX_NAME_LENGTH} characters", 400)
 
-    if not isinstance(password, str) or len(password) < MIN_PASSWORD_LENGTH:
-        return _error("invalid_password", "Enter a valid password", 400)
+    if not isinstance(password, str) or not (MIN_PASSWORD_LENGTH <= len(password) <= MAX_PASSWORD_LENGTH):
+        return _error("invalid_password", f"Password must be {MIN_PASSWORD_LENGTH} to {MAX_PASSWORD_LENGTH} characters", 400)
 
     if User.query.filter_by(email=email).first():
         return _error("email_taken", "An account with this email address has been made already", 409)
@@ -104,10 +135,23 @@ def login():
     email = _text(data, "email").lower()
     password = data.get("password")
 
+    wait = _login_wait(email)
+    if wait:
+        resp = _error("too_many_attempts", "Too many failed sign-in attempts. Try again in a few minutes.", 429)
+        resp[0].headers["Retry-After"] = str(wait)
+        return resp
+
     user = User.query.filter_by(email=email).first()
 
-    if not user or not isinstance(password, str) or not user.check_password(password):
+    if (
+        not user
+        or not isinstance(password, str)
+        or len(password) > MAX_PASSWORD_LENGTH
+        or not user.check_password(password)
+    ):
+        _login_failed(email)
         return _error("invalid_credentials", "Email or password is incorrect.", 401)
+    _login_ok(email)
 
     portal = data.get("portal")
 

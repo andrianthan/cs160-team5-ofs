@@ -12,7 +12,9 @@ const money = new Intl.NumberFormat("en-US", {
 });
 
 // created once, outside the component, so Stripe.js isn't reloaded on every render
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+// loadStripe("") throws at import time, so a build with no publishable key gets a null promise and a notice instead.
+const STRIPE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string | undefined;
+const stripePromise = STRIPE_KEY ? loadStripe(STRIPE_KEY) : null;
 
 // GET/POST /api/payments response (backend payments._view)
 type Payment = {
@@ -90,6 +92,12 @@ export default function CheckOutPage() {
             {paused && (
                 <div role="alert" className="mb-5 text-sm bg-gold-100 text-gold-800 border border-gold-200 rounded-xl px-3 py-2.5">
                     Deliveries are temporarily paused, so we can't take new orders right now. Your cart is saved. Please try again later.
+                </div>
+            )}
+
+            {!stripePromise && (
+                <div role="alert" className="mb-5 text-sm bg-gold-100 text-gold-800 border border-gold-200 rounded-xl px-3 py-2.5">
+                    Online payments are not set up on this server (the storefront was built without a Stripe publishable key), so orders can't be paid for yet. See the User's Guide, "Configuration".
                 </div>
             )}
 

@@ -6,6 +6,7 @@ import {
   AppHeader,
   BrandMark,
   NavPill,
+  NotFoundPage,
 } from "@ofs/shared/components";
 
 import { CartProvider } from "./CartContext";
@@ -95,6 +96,7 @@ export default function App() {
                 </RequireAuth>
               }
             />
+            <Route path="*" element={<NotFoundPage homeTo="/browse" homeLabel="Back to Browse" />} />
           </Routes>
         </CartProvider>
       </AuthProvider>

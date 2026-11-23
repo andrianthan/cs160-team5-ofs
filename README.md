@@ -14,22 +14,18 @@ Self-driving Robots carry up to 10 Orders / 200 lb per Trip.
 
 Apache (deployment reverse proxy) is set up in the Docker config (see Docker Setup). Not yet set up, but in the Part I HLD: Vitest (frontend tests).
 
-## Team Roles (Part I)
+## Team
 
-| Person | Owns |
+| Person | Built |
 |---|---|
-| P1 | Problem statement + 3 personas |
-| P2 | 5 user stories + 1 flow diagram |
-| P3 | Component architecture diagram |
-| P4 | Component feature list + descriptions |
-| P5 | Tools list + setup README |
-| PM | Editor + integration + submission |
+| Andrian | Repo and deployment skeleton, cart and pricing, Stripe payments, address validation and delivery zone, manager reports |
+| Kelvin | Login and roles backend, storefront (browse, search, cart), staff dashboard (preparation queue, dispatch), Docker setup |
+| Shresthkumar | Catalog and inventory backend, order creation and status lifecycle |
+| Anuj | Database schema and migrations, seed data |
+| Ethan | Trip grouping, route optimizer, simulated robot fleet |
+| Jorge | Order tracking, email notifications, delivery pause and order override |
 
-## Cadence
-
-- Weekly meeting Mon [time]
-- Async status by Fri 9pm in shared Doc
-- Stuck >2hrs → ping teammate before PM
+The full task list (T01 to T20) is in [docs/backlog-history.md](docs/backlog-history.md).
 
 ## Project Layout
 
@@ -43,9 +39,30 @@ Apache (deployment reverse proxy) is set up in the Docker config (see Docker Set
 /ui-prototype/               → Standalone click-through HTML/JS mockup, no backend — see its own README
 ```
 
-Every backend route is a stub (`501 not_implemented`) tagged with its owning backlog
-task — e.g. `app/blueprints/cart.py` says `T08, Than Andrian`. Check
-[Trello](https://trello.com/b/aw6ohAFJ) for the task card and pseudo code.
+The backend is one Flask blueprint per feature area under `backend/app/blueprints/` (auth, products, cart, payments,
+orders, trips, tracking, reports, settings). All twenty backlog tasks are implemented; the API is covered by
+`backend/tests/` (run `pytest`).
+
+## Testing this project (Part IV testers start here)
+
+1. Install Docker (Compose v2), clone the repo, and run the quick start below. It takes about a minute and needs no accounts.
+2. Open the storefront at http://localhost:8080 and the staff dashboard at http://localhost:8081.
+3. Log in with the demo accounts:
+
+| Role | Email | Password | Portal |
+|---|---|---|---|
+| Customer | `customer@example.com` | `customer123` | storefront |
+| Employee | `employee@example.com` | `employee123` | staff dashboard |
+| Manager | `manager@example.com` | `manager123` | staff dashboard |
+
+4. **Paying and address lookup need keys.** Without a Stripe test key and a Mapbox token the checkout page says
+   payments are not set up and the address box finds nothing. Everything else works without them (browsing, cart,
+   staff queue, dispatch, tracking, inventory, reports). To test checkout, add the keys as described under
+   "Checkout and the address map need keys" below, then use card `4242 4242 4242 4242`.
+5. To go back to a clean state at any time, run the **Reset to a clean slate** command below.
+
+Five failed sign-ins in a row on one account are fine; after 20 within five minutes that account is locked out
+for the rest of the window (the API answers 429). Restarting the backend clears it.
 
 ## Setup
 

@@ -11,6 +11,7 @@ import {
   BrandMark,
   LoginPage,
   NavPill,
+  NotFoundPage,
 } from "@ofs/shared/components";
 
 import DispatchPage from "./pages/DispatchPage";
@@ -89,6 +90,7 @@ export default function App() {
               </RequireAuth>
             }
           />
+          <Route path="*" element={<NotFoundPage homeTo="/queue" homeLabel="Back to Prep Queue" />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

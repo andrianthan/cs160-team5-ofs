@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, request
+from werkzeug.exceptions import HTTPException
 from sqlalchemy.engine import make_url
 
 from .config import Config
@@ -25,7 +26,7 @@ def create_app(config_class=Config):
 
     db.init_app(app)
     migrate.init_app(app, db)
-    cors.init_app(app, resources={r"/api/*": {"origins": "*"}})  # tighten before prod
+    cors.init_app(app, resources={r"/api/*": {"origins": app.config["CORS_ORIGINS"]}})
 
     login_manager.init_app(app)
 
@@ -55,6 +56,19 @@ def create_app(config_class=Config):
         if request.is_json and _has_nul(request.get_json(silent=True)):
             return jsonify(error="invalid_text", message="Text can't contain NUL characters."), 400
         return None
+
+    @app.errorhandler(HTTPException)
+    def api_http_error(e):
+        # Unknown URLs, wrong methods, oversized bodies: answer the API with JSON, not Flask's HTML page.
+        if request.path.startswith("/api/"):
+            return jsonify(error=e.name.lower().replace(" ", "_"), message=e.description), e.code
+        return e
+
+    @app.errorhandler(Exception)
+    def api_unexpected_error(e):
+        # Never send a stack trace or internal detail to the client.
+        app.logger.exception("Unhandled error on %s %s", request.method, request.path)
+        return jsonify(error="server_error", message="Something went wrong on our side. Please try again."), 500
 
     @app.get("/api/health")
     def health():

@@ -217,6 +217,7 @@ def test_email_variants_are_one_account(world):
 
 def test_many_failed_logins_then_the_right_password_still_works(world):
     app, _, _ = world
+    app.config["LOGIN_MAX_FAILURES"] = 1000  # this test is about state staying clean; the lockout has its own tests
     client = app.test_client()
     for i in range(40):
         resp = client.post("/api/auth/login", json={"email": "customer@example.com", "password": f"wrong{i}"})

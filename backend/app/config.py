@@ -1,13 +1,53 @@
+import logging
 import os
+import secrets
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
+# The value shipped in .env.example and in older versions of this file. It is public (it's in the repo),
+# so anyone could use it to sign a session cookie for any account, including the Manager.
+_PUBLIC_DEFAULT_SECRET = "dev-secret-change-me"
+
+
+def _secret_key():
+    key = os.environ.get("SECRET_KEY")
+    if key and key != _PUBLIC_DEFAULT_SECRET and len(key) >= 16:
+        return key
+    logging.getLogger(__name__).warning(
+        "SECRET_KEY is unset, too short, or the public default: using a random key for this process. "
+        "Everyone is signed out when the backend restarts. Set SECRET_KEY in backend/.env to keep sessions."
+    )
+    return secrets.token_hex(32)
+
 class Config:
     """Base config, read from environment. See .env.example for the full list."""
 
-    SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-change-me")
+    SECRET_KEY = _secret_key()
+
+    # Session cookie: not readable by scripts, and not sent on cross-site POSTs (a basic CSRF defence).
+    # Set SESSION_COOKIE_SECURE=1 when the site is served over HTTPS.
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+    SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE") == "1"
+    REMEMBER_COOKIE_HTTPONLY = True
+    REMEMBER_COOKIE_SAMESITE = "Lax"
+    REMEMBER_COOKIE_SECURE = SESSION_COOKIE_SECURE
+
+    # Browsers only need CORS when a page on another origin calls the API (the Vite dev servers do this
+    # if they are not proxying). Production serves the apps and /api from one origin, so none is needed.
+    CORS_ORIGINS = [
+        o.strip() for o in os.environ.get(
+            "CORS_ORIGINS",
+            "http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174,"
+            "http://localhost:8080,http://localhost:8081",
+        ).split(",") if o.strip()
+    ]
+
+    # Failed sign-ins allowed per account in the window before the API answers 429.
+    LOGIN_MAX_FAILURES = int(os.environ.get("LOGIN_MAX_FAILURES", 20))
+    LOGIN_FAILURE_WINDOW_S = int(os.environ.get("LOGIN_FAILURE_WINDOW_S", 300))
     SQLALCHEMY_DATABASE_URI = os.environ.get(
         "DATABASE_URL", "postgresql://ofs:ofs@localhost:5432/ofs_dev"
     )

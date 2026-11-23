@@ -49,6 +49,9 @@ task — e.g. `app/blueprints/cart.py` says `T08, Than Andrian`. Check
 
 ## Setup
 
+The **[User's Guide](docs/users-guide.md)** covers installation, configuration (Stripe and Mapbox
+test keys), the sample data, and how to use every page as a customer, employee and manager.
+
 Two ways to run the project. **Docker** needs only Docker; **local development** needs Python and
 Node and reloads on every change. Commands are for macOS/Linux; Windows notes are inline.
 

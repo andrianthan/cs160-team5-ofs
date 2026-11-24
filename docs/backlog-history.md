@@ -27,30 +27,30 @@ T04, T05 and T12 were assigned to Karnani. Kelvin built T04 and the first versio
 
 ## Backlog with status
 
-Status below comes from reading the code on `origin/main` at `47af856` (PR #20, 2026-11-22) and running it: backend `pytest` gives 371 passed, 7 skipped; `npm run typecheck` passes on all three workspaces. Started and Finished are the first and last commits that touched the task, not planned dates.
+Status below comes from the code on `main`.
 
-| ID | Task | Assigned | Built by (from git) | Started | Finished | Status on `main` |
-|---|---|---|---|---|---|---|
-| T01 | Repo and deployment skeleton | Anuj | Andrian, Kelvin | 2026-09-14 | 2026-11-21 | Done. Repo, both frontends, Flask backend; Docker with gunicorn and Apache, local-database override, Stripe forwarder, auto-restart (PRs #17, #19); prebuilt images on GHCR (PR #20). |
-| T02 | PostgreSQL schema and migrations | Anuj | Anuj, then Kelvin | 2026-11-04 | 2026-11-21 | Done. Alembic migrations, all tables, CI check, RLS migration, connection pool and timeouts. |
-| T03 | Seed data, organic catalog | Anuj | Kelvin, Anuj, Andrian | 2026-09-30 | 2026-11-18 | Done. 38-product catalog, demo accounts, robots, two weeks of order history; `--auto` and `--reset` for local databases. |
-| T04 | Auth and Roles backend | Karnani | Kelvin, Karnani | 2026-09-30 | 2026-11-14 | Done. Register, login, logout, hashed passwords, role gating; sign-up race and long-name crashes fixed by Karnani. |
-| T05 | Catalog and Inventory backend | Karnani | Kelvin, Karnani | 2026-10-07 | 2026-11-14 | Done. Product list, create, edit, delete; every Stock change logged in `inventory_log` (Karnani, PR #10). |
-| T06 | Storefront shell, routing, auth screens | Kelvin | Kelvin | 2026-09-30 | 2026-10-26 | Done. |
-| T07 | Browse, search, product pages | Kelvin | Kelvin | 2026-10-06 | 2026-10-28 | Done. Search, categories, weight shown. |
-| T08 | Cart and Pricing backend | Andrian | Andrian | 2026-10-13 | 2026-10-28 | Done. Server-side weight, fee, overweight check. |
-| T09 | Cart UI, live weight and fee | Kelvin | Kelvin | 2026-10-14 | 2026-10-21 | Done. |
-| T10 | Payments with Stripe test mode | Andrian | Andrian, Kelvin | 2026-10-13 | 2026-11-17 | Done. Idempotency keys, webhook, cancel, refund; paid end to end in test mode; listener script and Docker forwarder. |
-| T11 | Address validation, delivery zone | Andrian | Andrian, Kelvin, Karnani | 2026-10-04 | 2026-11-14 | Done. |
-| T12 | Orders creation and status lifecycle | Karnani | Kelvin, Karnani | 2026-11-02 | 2026-11-14 | Done. Order creation, transitions, stock decrement, customer order history page (Karnani, PR #10). Cancelling is a Manager Order Override (T20). |
-| T13 | Delivery Planning, trip grouping | Ethan | Kelvin | 2026-10-14 | 2026-11-04 | Done. Grouping, 10-order and 200 lb limits, 30-minute lock, `/api/trips` and dispatch; feeds the T14 optimizer and T15 fleet. |
-| T14 | Route Optimizer (Mapbox) | Ethan | Andrian (Ethan's draft, since overwritten) | 2026-11-02 | 2026-11-16 | Done. Mapbox Optimization in `routing.py` with a nearest-neighbour fallback (PR #12). |
-| T15 | Simulated robot fleet service | Ethan | Ethan, Andrian, Kelvin | 2026-11-12 | 2026-11-18 | Done. Ethan's state machine in Andrian's rewrite (PR #12); offline/online (PR #14); Next stop, add and remove robots (PR #18). |
-| T16 | Order Tracking and live map | Jorge | Jorge | 2026-10-06 | 2026-11-15 | Done. Tracking endpoint with ownership check, Track page and robot map (PR #11). |
-| T17 | Notifications over SMTP | Jorge | Andrian | 2026-11-04 | 2026-11-16 | Done. Status-change emails with dedup and retry; Gmail login fix and SMTP setup and check scripts. |
-| T18 | Staff Dashboard UI | Kelvin | Kelvin, Andrian | 2026-10-26 | 2026-11-18 | Done. Inventory, prep queue, reports, Dispatch page with street map, trips and robot controls (PRs #12, #14, #15, #18). |
-| T19 | Manager Reports | Andrian | Andrian, Karnani | 2026-11-03 | 2026-11-16 | Done. Sales, inventory snapshot, delivery success rate, on-time rate, delivery duration, trip utilization (PR #16); stock history at the inventory-log endpoint. |
-| T20 | Delivery Pause and Order Override | Jorge | Jorge, Andrian, Karnani | 2026-10-21 | 2026-11-16 | Done. Pause API and toggle, checkout notice and Pay disabled while paused (PRs #14, #15); cancel override with a required reason and audit log. |
+| ID | Task | Assigned | Estimate (days) | Built by (from git) | Started | Finished | Status on `main` |
+|---|---|---|---|---|---|---|---|
+| T01 | Repo and deployment skeleton | Anuj | 3 | Andrian, Kelvin | 2026-09-14 | 2026-11-21 | Done. Repo, both frontends, Flask backend; Docker with gunicorn and Apache, local-database override, Stripe forwarder, auto-restart (PRs #17, #19); prebuilt images on GHCR (PR #20). |
+| T02 | PostgreSQL schema and migrations | Anuj | 3 | Anuj, then Kelvin | 2026-11-04 | 2026-11-21 | Done. Alembic migrations, all tables, CI check, RLS migration, connection pool and timeouts. |
+| T03 | Seed data, organic catalog | Anuj | 2 | Kelvin, Anuj, Andrian | 2026-09-30 | 2026-11-18 | Done. 38-product catalog, demo accounts, robots, two weeks of order history; `--auto` and `--reset` for local databases. |
+| T04 | Auth and Roles backend | Karnani | 4 | Kelvin, Karnani, Andrian | 2026-09-30 | 2026-11-22 | Done. Register, login, logout, hashed passwords, role gating; sign-up race and long-name crashes fixed by Karnani; session and sign-in hardening (PR #22). |
+| T05 | Catalog and Inventory backend | Karnani | 3 | Kelvin, Karnani | 2026-10-07 | 2026-11-14 | Done. Product list, create, edit, delete; every Stock change logged in `inventory_log` (Karnani, PR #10). |
+| T06 | Storefront shell, routing, auth screens | Kelvin | 3 | Kelvin | 2026-09-30 | 2026-10-26 | Done. |
+| T07 | Browse, search, product pages | Kelvin | 3 | Kelvin | 2026-10-06 | 2026-10-28 | Done. Search, categories, weight shown. |
+| T08 | Cart and Pricing backend | Andrian | 4 | Andrian | 2026-10-13 | 2026-10-28 | Done. Server-side weight, fee, overweight check. |
+| T09 | Cart UI, live weight and fee | Kelvin | 3 | Kelvin | 2026-10-14 | 2026-10-21 | Done. |
+| T10 | Payments with Stripe test mode | Andrian | 4 | Andrian, Kelvin | 2026-10-13 | 2026-11-17 | Done. Idempotency keys, webhook, cancel, refund; paid end to end in test mode; listener script and Docker forwarder. |
+| T11 | Address validation, delivery zone | Andrian | 3 | Andrian, Kelvin, Karnani | 2026-10-04 | 2026-11-14 | Done. |
+| T12 | Orders creation and status lifecycle | Karnani | 3 | Kelvin, Karnani | 2026-11-02 | 2026-11-14 | Done. Order creation, transitions, stock decrement, customer order history page (Karnani, PR #10). Cancelling is a Manager Order Override (T20). |
+| T13 | Delivery Planning, trip grouping | Ethan | 5 | Kelvin | 2026-10-14 | 2026-11-04 | Done. Grouping, 10-order and 200 lb limits, 30-minute lock, `/api/trips` and dispatch; feeds the T14 optimizer and T15 fleet. |
+| T14 | Route Optimizer (Mapbox) | Ethan | 3 | Andrian (Ethan's draft, since overwritten) | 2026-11-02 | 2026-11-16 | Done. Mapbox Optimization in `routing.py` with a nearest-neighbour fallback (PR #12). |
+| T15 | Simulated robot fleet service | Ethan | 4 | Ethan, Andrian, Kelvin | 2026-11-12 | 2026-11-18 | Done. Ethan's state machine in Andrian's rewrite (PR #12); offline/online (PR #14); Next stop, add and remove robots (PR #18). |
+| T16 | Order Tracking and live map | Jorge | 4 | Jorge | 2026-10-06 | 2026-11-15 | Done. Tracking endpoint with ownership check, Track page and robot map (PR #11). |
+| T17 | Notifications over SMTP | Jorge | 2 | Andrian | 2026-11-04 | 2026-11-16 | Done. Status-change emails with dedup and retry; Gmail login fix and SMTP setup and check scripts. |
+| T18 | Staff Dashboard UI | Kelvin | 5 | Kelvin, Andrian | 2026-10-26 | 2026-11-18 | Done. Inventory, prep queue, reports, Dispatch page with street map, trips and robot controls (PRs #12, #14, #15, #18). |
+| T19 | Manager Reports | Andrian | 3 | Andrian, Karnani | 2026-11-03 | 2026-11-16 | Done. Sales, inventory snapshot, delivery success rate, on-time rate, delivery duration, trip utilization (PR #16); stock history at the inventory-log endpoint. |
+| T20 | Delivery Pause and Order Override | Jorge | 3 | Jorge, Andrian, Karnani | 2026-10-21 | 2026-11-16 | Done. Pause API and toggle, checkout notice and Pay disabled while paused (PRs #14, #15); cancel override with a required reason and audit log. |
 
 Summary: all 20 done.
 
@@ -95,6 +95,7 @@ Summary: all 20 done.
 - 2026-09-30 Kelvin: basic authentication and tests, `auth.py`, `user.py`, extensions (`120eb56`), more tests (`dcf0dc5`), fixes (`3a91276`).
 - 2026-10-04 Andrian merged `feat/authentication`.
 - 2026-11-14 Karnani: stress tests found two T04 crashes and fixed them: simultaneous sign-ups with one email (500 instead of 409), and names over 120 characters (500 on PostgreSQL) (`02dcf41`, branch `shresth/t05-t12-inventory-log-order-history`; merged in PR #10 on 2026-11-15).
+- 2026-11-22 Andrian: security hardening before Part IV testing (`15b1b65`, PR #22): no fallback to the public default `SECRET_KEY`, which let anyone forge a Manager session; `SameSite=Lax` session cookie and CORS limited to configured origins; sign-in lockout after 20 failures in 5 minutes; passwords capped at 128 characters. Also JSON-only API errors, Apache security headers, a Not Found page in both apps, and a checkout notice instead of a crash when the build has no Stripe key.
 
 ### T05 Catalog and Inventory backend (assigned: Karnani)
 - 2026-10-07 Kelvin: Product model and API (`1a2b81d`).

@@ -1,5 +1,7 @@
 # OFS On-Demand Food Delivery (CS160 Team 5)
 
+**Install, usage and demo video:** [watch on Google Drive](https://drive.google.com/drive/folders/1RAx83JNBRHXf6EGNgzOK39NRivnxqyeI?usp=sharing)
+
 Web app for organic food delivery in Downtown San Jose.
 Self-driving Robots carry up to 10 Orders / 200 lb per Trip.
 

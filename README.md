@@ -117,8 +117,9 @@ VITE_STRIPE_PUBLISHABLE_KEY=pk_test_...
 VITE_MAPBOX_TOKEN=pk....
 ```
 The `VITE_*` values are baked into the storefront at **build** time and blank values fail silently, so
-after changing them run `docker compose build storefront`. After changing `backend/.env` run
-`docker compose up -d --force-recreate backend`.
+after changing them run `docker compose up -d --build storefront`. After changing `backend/.env` run
+`docker compose up -d --force-recreate backend`. In both, use the same `-f` flags you started with
+(for the private database: `-f docker-compose.yml -f docker-compose.localdb.yml`).
 
 **With the team's Supabase database:** put its connection string in `backend/.env` (see
 [Database](#database)), then start everything, with or without the Stripe forwarder:
@@ -134,7 +135,8 @@ that is really what you want, run `docker compose run --rm backend python seed_d
 after a crash, a reboot or a Docker restart (`restart: unless-stopped`).
 
 **Stripe webhooks** (an order is only created when Stripe's webhook arrives): add the optional
-`stripe` service, which uses `STRIPE_SECRET_KEY` from `backend/.env`:
+`stripe` service, which uses `STRIPE_SECRET_KEY` from `backend/.env`. Create that file and add the key
+before the first start, or Compose stops with "env file ... not found":
 ```
 # Supabase:
 docker compose --profile stripe up -d --build
@@ -143,7 +145,7 @@ AUTO_SEED=1 docker compose -f docker-compose.yml -f docker-compose.localdb.yml -
 docker compose logs stripe          # prints "Your webhook signing secret is whsec_..." (add the same -f flags)
 ```
 Put that `whsec_...` in `backend/.env` as `STRIPE_WEBHOOK_SECRET` (once; it stays the same), then
-`docker compose up -d --force-recreate backend`. Test with the checkout page and card
+`docker compose up -d --force-recreate backend` (again with the same `-f` flags). Test with the checkout page and card
 `4242 4242 4242 4242`; `stripe trigger` fails on the newest Stripe API version.
 
 **Which Stripe webhook option should I use?**
@@ -164,6 +166,8 @@ Put that `whsec_...` in `backend/.env` as `STRIPE_WEBHOOK_SECRET` (once; it stay
 | `Tenant or user not found` / `password authentication failed` | Wrong region or `postgres.<ref>` user (copy the string again), or brackets or a space in the password |
 | `AUTO_SEED refused` | `DATABASE_URL` points at a non-local database. Use the local database override, or seed by hand |
 | Backend stops answering after the computer sleeps | Its database connections died during sleep. It now drops them and reconnects within about 30 seconds; if yours stays frozen, the image predates that fix: `docker compose up -d --build backend` |
+| `env file .../backend/.env not found` with `--profile stripe` | The Stripe forwarder needs `backend/.env`. Copy `backend/.env.example` to `backend/.env`, set `STRIPE_SECRET_KEY`, and start again |
+| Backend fails after `--force-recreate`, using the private database | The `-f docker-compose.localdb.yml` flag was left off, so it lost the local database. Run it again with both `-f` flags |
 | Checkout form or address map blank | `VITE_*` keys were blank at build time; fill the root `.env` and rebuild the storefront |
 
 ### Docker without cloning (prebuilt images)
